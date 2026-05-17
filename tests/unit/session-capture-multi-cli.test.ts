@@ -9,6 +9,7 @@ import {
   doesCapturedSessionExist,
   snapshotSessionIdsForCapture,
 } from '../../src/server/session-capture.js'
+import { readCodexSessionFirstLine } from '../../src/server/session-capture-codex.js'
 
 const tempDirs: string[] = []
 const originalCodexHome = process.env.CODEX_HOME
@@ -56,6 +57,19 @@ describe('multi-CLI session capture', () => {
     )
     expect(doesCapturedSessionExist(cwd, capture, sessionId)).toBe(true)
     expect(doesCapturedSessionExist(join(codexHome, 'other'), capture, sessionId)).toBe(false)
+  })
+
+  test('reads only the bounded Codex jsonl header line instead of decoding the full rollout', () => {
+    const codexHome = makeTempDir('hive-codex-header')
+    const filePath = join(codexHome, 'rollout-large.jsonl')
+    const firstLine = JSON.stringify({
+      payload: { cwd: join(codexHome, 'workspace'), id: '019dc277-0e8e-75c1-9794-94929426288e' },
+      type: 'session_meta',
+    })
+    writeFileSync(filePath, `${firstLine}\n${'x'.repeat(256 * 1024)}`)
+
+    expect(readCodexSessionFirstLine(filePath, firstLine.length + 8)).toBe(firstLine)
+    expect(readCodexSessionFirstLine(filePath, firstLine.length - 1)).toBeNull()
   })
 
   test('captures Gemini sessions by project root from GEMINI tmp chat json files', () => {

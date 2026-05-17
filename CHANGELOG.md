@@ -2,6 +2,26 @@
 
 All notable user-facing changes will be documented in this file.
 
+## 1.0.0 - 2026-05-17
+
+Stable release.
+
+- Hive is now published as the stable `1.0.0` release. The install path stays
+  the same: `npm install -g @tt-a1i/hive` or `npx @tt-a1i/hive`.
+- Fixed PTY keyboard handling so Shift+Enter can reach terminal apps such as
+  Claude Code and Gemini instead of being swallowed as a plain submit.
+- Worker cards now present live terminal state as `running` / `运行中` rather
+  than exposing the internal `working` vs `idle` dispatch-status distinction.
+  The protocol-level `idle / working / stopped` states remain unchanged.
+- Worker detail modals reserve Escape for the embedded terminal, so agent
+  shortcuts that use Escape no longer close the modal accidentally.
+- Codex session capture no longer decodes every historical
+  `~/.codex/sessions/**/rollout-*.jsonl` file during agent startup. It reads a
+  bounded first line only, which removes multi-second add-member stalls on
+  large Codex session stores.
+- CLI agent logos are preloaded and decoded synchronously to reduce the blank
+  avatar flash immediately after a member is created.
+
 ## 0.6.0-alpha.8 - 2026-05-16
 
 License switch — no code changes from alpha.7.

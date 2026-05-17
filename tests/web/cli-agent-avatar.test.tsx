@@ -22,6 +22,7 @@ describe('CliAgentAvatar — known preset renders the brand logo', () => {
     expect(avatar.getAttribute('data-command-preset')).toBe(presetId)
     const img = avatar.querySelector('img')
     expect(img?.getAttribute('src')).toBe(expectedSrc)
+    expect(img?.getAttribute('decoding')).toBe('sync')
   })
 })
 

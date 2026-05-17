@@ -22,10 +22,10 @@ injects into each agent's shell, and shares a markdown task graph at
 
 English · [简体中文](./README.md)
 
-> Public preview. Hive is local-first, runs on `127.0.0.1`, and is intended
-> for developers who already use CLI coding agents. The latest published
-> version is on [npm](https://www.npmjs.com/package/@tt-a1i/hive) and the
-> badge above resolves to it.
+> Hive is local-first, runs on `127.0.0.1`, and is intended for developers who
+> already use CLI coding agents. The latest stable release is on
+> [npm](https://www.npmjs.com/package/@tt-a1i/hive) and the badge above resolves
+> to it.
 
 ## Why Hive
 
@@ -264,8 +264,9 @@ verifies macOS, Ubuntu, and Windows, then publishes to npm with `NPM_TOKEN`.
 
 ## Status
 
-Hive is in alpha public preview. Expect UI and protocol details to keep moving
-while the core local orchestration model hardens.
+Hive is published as a stable release. Current work focuses on polishing the
+multi-CLI-agent workflow, Windows support, and clearer orchestration
+observability.
 
 ## License
 

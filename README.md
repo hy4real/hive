@@ -17,7 +17,7 @@
 
 [English](./README.en.md) · 简体中文
 
-> Public preview。Hive 是本机优先的工具，只监听 `127.0.0.1`，面向已经在用 CLI Coding Agent 的开发者。最新发布版本见 [npm](https://www.npmjs.com/package/@tt-a1i/hive)，上面的 badge 会指向它。
+> Hive 是本机优先的工具，只监听 `127.0.0.1`，面向已经在用 CLI Coding Agent 的开发者。最新稳定版本见 [npm](https://www.npmjs.com/package/@tt-a1i/hive)，上面的 badge 会指向它。
 
 ## 为什么需要 Hive
 
@@ -211,7 +211,7 @@ pnpm release:dry
 
 ## 状态
 
-Hive 正处于 alpha public preview 阶段。在本机调度模型稳定下来之前，UI 和协议细节还会继续调整。
+Hive 已发布稳定版。当前重点是继续打磨多 CLI Agent 协作体验、Windows 支持和更清晰的调度可观测性。
 
 ## License
 

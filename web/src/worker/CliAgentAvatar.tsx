@@ -108,6 +108,7 @@ export const CliAgentAvatar = ({
       <img
         src={logo.src}
         alt=""
+        decoding="sync"
         width={innerSize}
         height={innerSize}
         style={{ width: `${innerSize}px`, height: `${innerSize}px`, objectFit: 'contain' }}

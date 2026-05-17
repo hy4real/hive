@@ -15,7 +15,7 @@ body:
     attributes:
       label: Hive version
       description: Output of `hive --version`.
-      placeholder: e.g. 0.6.0-alpha.4
+      placeholder: e.g. 1.0.0
     validations:
       required: true
   - type: input

@@ -1,10 +1,12 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { closeSync, existsSync, openSync, readdirSync, readSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 import { captureSessionIdWithCoordinator } from './claude-session-coordinator.js'
 
 const CODEX_SESSION_FILE = /^rollout-.*\.jsonl$/i
+const CODEX_HEADER_READ_CHUNK_BYTES = 4096
+const CODEX_HEADER_MAX_BYTES = 64 * 1024
 
 const getDefaultCodexHome = () => process.env.CODEX_HOME ?? join(homedir(), '.codex')
 
@@ -33,8 +35,48 @@ const walkSessionFiles = (dir: string): string[] => {
   }
 }
 
+export const readCodexSessionFirstLine = (
+  filePath: string,
+  maxBytes = CODEX_HEADER_MAX_BYTES
+): string | null => {
+  const fd = openSync(filePath, 'r')
+  try {
+    const chunks: Buffer[] = []
+    let totalBytes = 0
+    let position = 0
+    let reachedLineEnd = false
+
+    while (totalBytes < maxBytes) {
+      const bytesToRead = Math.min(CODEX_HEADER_READ_CHUNK_BYTES, maxBytes - totalBytes)
+      const buffer = Buffer.allocUnsafe(bytesToRead)
+      const bytesRead = readSync(fd, buffer, 0, bytesToRead, position)
+      if (bytesRead === 0) {
+        reachedLineEnd = true
+        break
+      }
+
+      const slice = buffer.subarray(0, bytesRead)
+      const newlineIndex = slice.indexOf(0x0a)
+      if (newlineIndex >= 0) {
+        chunks.push(slice.subarray(0, newlineIndex))
+        reachedLineEnd = true
+        break
+      }
+
+      chunks.push(slice)
+      totalBytes += bytesRead
+      position += bytesRead
+    }
+
+    if (!reachedLineEnd) return null
+    return Buffer.concat(chunks).toString('utf8').replace(/\r$/, '')
+  } finally {
+    closeSync(fd)
+  }
+}
+
 const parseCodexSession = (filePath: string) => {
-  const firstLine = readFileSync(filePath, 'utf8').split(/\r?\n/, 1)[0] ?? ''
+  const firstLine = readCodexSessionFirstLine(filePath) ?? ''
   const parsed = JSON.parse(firstLine) as unknown
   if (!parsed || typeof parsed !== 'object' || !('payload' in parsed)) return null
   const payload = parsed.payload

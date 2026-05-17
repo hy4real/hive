@@ -4,7 +4,7 @@ This checklist is for tagged npm releases of `@tt-a1i/hive`.
 
 ## Preconditions
 
-- `package.json` version matches the intended tag, for example `v0.6.0-alpha.3`.
+- `package.json` version matches the intended tag, for example `v1.0.0`.
 - `CHANGELOG.md` has an entry for that exact package version.
 - `NPM_TOKEN` is configured as a GitHub Actions secret for the repository.
 - The GitHub release workflow is green on macOS, Ubuntu, and Windows.
