@@ -51,8 +51,6 @@ interface RuntimeStore {
     run_id: string
     status: string
   }>
-  closeWorkspaceShell: (workspaceId: string, runId: string) => boolean
-  startWorkspaceShell: (workspaceId: string) => Promise<LiveAgentRun>
   configureAgentLaunch: (
     workspaceId: string,
     agentId: string,
@@ -127,7 +125,6 @@ export const createRuntimeStore = (options: RuntimeStoreOptions = {}): RuntimeSt
     listWorkspaces: () => services.workspaceStore.listWorkspaces(),
     deleteWorkspace: async (workspaceId) => {
       const workspace = services.workspaceStore.getWorkspaceSnapshot(workspaceId)
-      lifecycle.deleteWorkspaceShell(workspaceId)
       for (const agent of workspace.agents) {
         const activeRun = services.agentRuntime.getActiveRunByAgentId(workspaceId, agent.id)
         if (activeRun) services.agentRuntime.stopAgentRun(activeRun.runId)
@@ -169,14 +166,12 @@ export const createRuntimeStore = (options: RuntimeStoreOptions = {}): RuntimeSt
     getAgent: (workspaceId, agentId) => services.workspaceStore.getAgent(workspaceId, agentId),
     getPtyOutputBus: lifecycle.getPtyOutputBus,
     listTerminalRuns: lifecycle.listTerminalRuns,
-    closeWorkspaceShell: lifecycle.closeWorkspaceShell,
     configureAgentLaunch: lifecycle.configureAgentLaunch,
     peekAgentLaunchConfig: lifecycle.peekAgentLaunchConfig,
     startAgent: lifecycle.startAgent,
     autostartConfiguredAgents: lifecycle.autostartConfiguredAgents,
     startWorkspaceWatch: lifecycle.startWorkspaceWatch,
-    startWorkspaceShell: lifecycle.startWorkspaceShell,
-    getLiveRun: lifecycle.getLiveRun,
+    getLiveRun: (runId) => services.agentRuntime.getLiveRun(runId),
     getActiveRunByAgentId: (workspaceId, agentId) =>
       services.agentRuntime.getActiveRunByAgentId(workspaceId, agentId),
     registerTasksListener: lifecycle.registerTasksListener,
@@ -184,13 +179,13 @@ export const createRuntimeStore = (options: RuntimeStoreOptions = {}): RuntimeSt
     listMessagesForRecovery: (workspaceId, sinceMs) =>
       services.messageLogStore.listMessagesForRecovery(workspaceId, sinceMs),
     peekAgentToken: (agentId) => services.agentRuntime.peekAgentToken(agentId),
-    pauseTerminalRun: lifecycle.pauseTerminalRun,
-    resizeAgentRun: lifecycle.resizeTerminalRun,
-    resumeTerminalRun: lifecycle.resumeTerminalRun,
+    pauseTerminalRun: (runId) => services.agentRuntime.pauseRun(runId),
+    resizeAgentRun: (runId, cols, rows) => services.agentRuntime.resizeAgentRun(runId, cols, rows),
+    resumeTerminalRun: (runId) => services.agentRuntime.resumeRun(runId),
     settings: services.settings,
     writeRunInput: lifecycle.writeRunInput,
     getUiToken: () => services.uiAuth.getToken(),
-    stopAgentRun: lifecycle.stopTerminalRun,
+    stopAgentRun: (runId) => services.agentRuntime.stopAgentRun(runId),
     validateAgentToken: (agentId, token) =>
       services.agentRuntime.validateAgentToken(agentId, token),
     validateUiToken: (token) => services.uiAuth.validate(token),

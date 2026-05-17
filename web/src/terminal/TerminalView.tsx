@@ -17,11 +17,7 @@ interface TerminalViewProps {
   title: string
 }
 
-const candidateIds = (runId: string): string[] => [
-  `worker-pty-${runId}`,
-  `orch-pty-${runId}`,
-  `shell-pty-${runId}`,
-]
+const candidateIds = (runId: string): string[] => [`worker-pty-${runId}`, `orch-pty-${runId}`]
 
 /**
  * Poll the DOM for a portal slot matching this run id. We intentionally poll (vs
