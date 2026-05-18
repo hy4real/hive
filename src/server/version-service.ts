@@ -44,7 +44,10 @@ export const compareVersions = (left: string, right: string) => {
 
 const buildVersionInfo = (currentVersion: string, latestVersion: string): VersionInfoPayload => ({
   current_version: currentVersion,
-  install_hint: `npm install -g ${PACKAGE_NAME}@latest`,
+  // Show `hive update` as the primary upgrade path now that the subcommand
+  // exists; it prints the npm fallback if its own spawn fails, so users
+  // running on Windows / Linux without a working npm in PATH still recover.
+  install_hint: 'hive update',
   latest_version: latestVersion,
   package_name: PACKAGE_NAME,
   release_url: `https://www.npmjs.com/package/${PACKAGE_NAME}/v/${latestVersion}`,

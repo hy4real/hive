@@ -1,13 +1,21 @@
 import { spawn } from 'node:child_process'
 
-import { PACKAGE_NAME } from '../server/package-version.js'
+import {
+  getNpmCommand,
+  INSTALL_COMMAND_ARGS,
+  INSTALL_COMMAND_DISPLAY,
+} from '../server/package-version.js'
 
 export const HIVE_UPDATE_USAGE = [
   'Usage:',
   '  hive update',
   '',
-  `Runs \`npm install -g ${PACKAGE_NAME}@latest\` to upgrade Hive in place.`,
+  `Runs \`${INSTALL_COMMAND_DISPLAY}\` to upgrade Hive in place.`,
   'Restart any running Hive process afterwards to pick up the new version.',
+  '',
+  'Note: only npm-installed Hive can be upgraded this way. If you installed',
+  'Hive via pnpm or yarn, upgrade through the same package manager instead;',
+  'otherwise the npm copy will shadow your existing install.',
   '',
   'Options:',
   '  -h, --help      Print this help.',
@@ -18,16 +26,31 @@ export interface RunUpdateResult {
   spawnError?: Error
 }
 
-export type RunUpdate = (command: string, args: string[]) => Promise<RunUpdateResult>
+export type RunUpdate = (command: string, args: readonly string[]) => Promise<RunUpdateResult>
 
-const defaultRunUpdate: RunUpdate = (command, args) =>
+export const defaultRunUpdate: RunUpdate = (command, args) =>
   new Promise<RunUpdateResult>((resolve) => {
-    const child = spawn(command, args, { stdio: 'inherit' })
+    const child = spawn(command, [...args], { stdio: 'inherit' })
     let resolved = false
+
+    // Forward Ctrl+C / SIGTERM to the npm child so it can clean up rather
+    // than getting orphaned mid-install. The handlers are registered with
+    // `once` so they don't accumulate across invocations, and we also
+    // explicitly remove them when the child exits in case the user only
+    // sent one signal (Node would otherwise keep the handler alive).
+    const handleSignal = (signal: NodeJS.Signals) => () => {
+      child.kill(signal)
+    }
+    const handleSigint = handleSignal('SIGINT')
+    const handleSigterm = handleSignal('SIGTERM')
+    process.once('SIGINT', handleSigint)
+    process.once('SIGTERM', handleSigterm)
 
     const finalize = (result: RunUpdateResult) => {
       if (resolved) return
       resolved = true
+      process.off('SIGINT', handleSigint)
+      process.off('SIGTERM', handleSigterm)
       resolve(result)
     }
 
@@ -39,9 +62,20 @@ const defaultRunUpdate: RunUpdate = (command, args) =>
     })
   })
 
+const printManualFallback = () => {
+  console.error(`You can run the upgrade manually: ${INSTALL_COMMAND_DISPLAY}`)
+}
+
+interface RunHiveUpdateOptions {
+  /** Inject a fake spawn for tests. */
+  runUpdate?: RunUpdate
+  /** Override platform detection for tests. */
+  platform?: NodeJS.Platform
+}
+
 export const runHiveUpdateCommand = async (
   argv: string[],
-  options: { runUpdate?: RunUpdate } = {}
+  options: RunHiveUpdateOptions = {}
 ): Promise<number> => {
   if (argv.includes('--help') || argv.includes('-h')) {
     console.log(HIVE_UPDATE_USAGE)
@@ -58,14 +92,14 @@ export const runHiveUpdateCommand = async (
   }
 
   const run = options.runUpdate ?? defaultRunUpdate
-  const args = ['install', '-g', `${PACKAGE_NAME}@latest`]
-  console.log(`Running: npm ${args.join(' ')}`)
+  const command = getNpmCommand(options.platform)
+  console.log(`Running: ${INSTALL_COMMAND_DISPLAY}`)
 
-  const result = await run('npm', args)
+  const result = await run(command, INSTALL_COMMAND_ARGS)
 
   if (result.spawnError) {
     console.error(`Failed to spawn npm: ${result.spawnError.message}`)
-    console.error(`You can run the upgrade manually: npm install -g ${PACKAGE_NAME}@latest`)
+    printManualFallback()
     return 1
   }
 
@@ -75,5 +109,8 @@ export const runHiveUpdateCommand = async (
   }
 
   console.error(`npm install exited with code ${result.exitCode}.`)
+  // Permission failures (EACCES on root-owned /usr/bin/npm) and other
+  // non-spawn errors leave the user with copy-paste recovery either way.
+  printManualFallback()
   return result.exitCode
 }

@@ -52,6 +52,14 @@ hive
 
 打开终端打印出来的本机地址，通常是 `http://127.0.0.1:3000/`。如果你想指定端口，可以用 `hive --port 4010`。
 
+升级到最新版本：
+
+```bash
+hive update
+```
+
+`hive update` 会在原位运行 `npm install -g @tt-a1i/hive@latest`，完事后重启 Hive 就能用上新版。如果当初是用 pnpm / yarn 装的 Hive，请用同一个包管理器升级，避免装出第二份。
+
 首次使用流程：
 
 1. 选择一个项目目录作为 workspace。

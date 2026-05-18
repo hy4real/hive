@@ -71,6 +71,17 @@ hive
 Open the printed local URL, usually `http://127.0.0.1:3000/`. Use
 `hive --port 4010` when you need a specific local port.
 
+To upgrade in place:
+
+```bash
+hive update
+```
+
+`hive update` runs `npm install -g @tt-a1i/hive@latest` in place. Restart any
+in-flight Hive process to pick up the new version. If you installed Hive with
+pnpm or yarn, upgrade through the same package manager — otherwise the new
+npm copy will shadow your existing install.
+
 First-run flow:
 
 1. Create a workspace from a project folder.
