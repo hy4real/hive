@@ -3,6 +3,11 @@ import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import { HIVE_USAGE, handleHiveInfoCommand, runHiveCommand } from '../../src/cli/hive.js'
+import {
+  HIVE_UPDATE_USAGE,
+  type RunUpdate,
+  runHiveUpdateCommand,
+} from '../../src/cli/hive-update.js'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -71,5 +76,83 @@ describe('hive cli', () => {
     } finally {
       await result.close()
     }
+  })
+})
+
+describe('hive update cli', () => {
+  test('--help prints update usage and exits 0 without invoking npm', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    let runUpdateInvoked = false
+    const runUpdate: RunUpdate = async () => {
+      runUpdateInvoked = true
+      return { exitCode: 0 }
+    }
+
+    const code = await runHiveUpdateCommand(['--help'], { runUpdate })
+
+    expect(code).toBe(0)
+    expect(logSpy).toHaveBeenCalledWith(HIVE_UPDATE_USAGE)
+    expect(runUpdateInvoked).toBe(false)
+  })
+
+  test('successful npm install exits 0 and prints a restart hint', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const calls: Array<{ command: string; args: string[] }> = []
+    const runUpdate: RunUpdate = async (command, args) => {
+      calls.push({ command, args })
+      return { exitCode: 0 }
+    }
+
+    const code = await runHiveUpdateCommand([], { runUpdate })
+
+    expect(code).toBe(0)
+    expect(calls).toEqual([{ command: 'npm', args: ['install', '-g', '@tt-a1i/hive@latest'] }])
+    expect(logSpy).toHaveBeenCalledWith('Running: npm install -g @tt-a1i/hive@latest')
+    expect(logSpy).toHaveBeenCalledWith(
+      'Hive updated. Restart any running Hive process to pick up the new version.'
+    )
+  })
+
+  test('non-zero npm exit propagates the code and prints an error', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const runUpdate: RunUpdate = async () => ({ exitCode: 7 })
+
+    const code = await runHiveUpdateCommand([], { runUpdate })
+
+    expect(code).toBe(7)
+    expect(errorSpy).toHaveBeenCalledWith('npm install exited with code 7.')
+  })
+
+  test('spawn error (npm not on PATH) exits 1 and surfaces the manual fallback hint', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const runUpdate: RunUpdate = async () => ({
+      exitCode: 1,
+      spawnError: Object.assign(new Error('spawn npm ENOENT'), { code: 'ENOENT' }),
+    })
+
+    const code = await runHiveUpdateCommand([], { runUpdate })
+
+    expect(code).toBe(1)
+    expect(errorSpy).toHaveBeenCalledWith('Failed to spawn npm: spawn npm ENOENT')
+    expect(errorSpy).toHaveBeenCalledWith(
+      'You can run the upgrade manually: npm install -g @tt-a1i/hive@latest'
+    )
+  })
+
+  test('unknown arguments are rejected before invoking npm', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    let runUpdateInvoked = false
+    const runUpdate: RunUpdate = async () => {
+      runUpdateInvoked = true
+      return { exitCode: 0 }
+    }
+
+    const code = await runHiveUpdateCommand(['--bogus'], { runUpdate })
+
+    expect(code).toBe(1)
+    expect(errorSpy).toHaveBeenCalledWith('Unknown argument: --bogus')
+    expect(runUpdateInvoked).toBe(false)
   })
 })

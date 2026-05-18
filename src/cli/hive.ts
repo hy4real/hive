@@ -11,6 +11,7 @@ import { createApp } from '../server/app.js'
 import { readPackageVersion } from '../server/package-version.js'
 import { createRuntimeStore, type RuntimeStore } from '../server/runtime-store.js'
 import { createVersionService, type VersionService } from '../server/version-service.js'
+import { runHiveUpdateCommand } from './hive-update.js'
 
 interface RunHiveCommandResult {
   port: number
@@ -25,11 +26,15 @@ type RunHiveCommandOptions = {
 export const HIVE_USAGE = [
   'Usage:',
   '  hive [--port <port>]',
+  '  hive update',
   '',
   'Options:',
   '  --port <port>   Bind the local runtime to a specific port (default: 3000).',
   '  -h, --help      Print this help.',
   '  -v, --version   Print the installed Hive version.',
+  '',
+  'Commands:',
+  '  update          Upgrade Hive in place via `npm install -g`.',
 ].join('\n')
 
 export const handleHiveInfoCommand = (argv: string[]) => {
@@ -167,9 +172,19 @@ const isMainModule = process.argv[1]
 
 if (isMainModule) {
   const argv = process.argv.slice(2)
-  if (handleHiveInfoCommand(argv)) process.exit(0)
-  runHiveCommand(argv).catch((error) => {
-    console.error(error)
-    process.exit(1)
-  })
+  if (argv[0] === 'update') {
+    runHiveUpdateCommand(argv.slice(1))
+      .then((code) => process.exit(code))
+      .catch((error) => {
+        console.error(error)
+        process.exit(1)
+      })
+  } else if (handleHiveInfoCommand(argv)) {
+    process.exit(0)
+  } else {
+    runHiveCommand(argv).catch((error) => {
+      console.error(error)
+      process.exit(1)
+    })
+  }
 }
