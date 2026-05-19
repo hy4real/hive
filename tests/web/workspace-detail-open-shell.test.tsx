@@ -92,6 +92,16 @@ describe('WorkspaceDetail shell terminal button', () => {
     expect(startWorkspaceShell).toHaveBeenCalledWith(workspace.id)
   })
 
+  test('starts a workspace shell when only a stale shell run exists without a shell tab', async () => {
+    vi.mocked(startWorkspaceShell).mockResolvedValue(shellRun('shell-run-2'))
+
+    renderWorkspaceDetail([shellRun()])
+    fireEvent.click(screen.getByTestId('open-workspace-shell'))
+
+    expect(startWorkspaceShell).toHaveBeenCalledTimes(1)
+    expect(startWorkspaceShell).toHaveBeenCalledWith(workspace.id)
+  })
+
   test('focuses an existing shell tab without starting another shell', async () => {
     const shell = shellRun()
     window.localStorage.setItem(
