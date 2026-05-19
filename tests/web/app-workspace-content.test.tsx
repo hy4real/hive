@@ -16,7 +16,17 @@ const shellRun = vi.hoisted<TerminalRunSummary>(() => ({
 }))
 
 vi.mock('../../web/src/WorkspaceTerminalPanels.js', () => ({
-  WorkspaceTerminalPanels: () => <div data-testid="terminal-panels" />,
+  WorkspaceTerminalPanels: ({
+    optimisticRuns,
+    workspaceId,
+  }: {
+    optimisticRuns?: TerminalRunSummary[]
+    workspaceId: string
+  }) => (
+    <div data-testid="terminal-panels" data-workspace-id={workspaceId}>
+      {(optimisticRuns ?? []).map((run) => run.run_id).join(',')}
+    </div>
+  ),
 }))
 
 vi.mock('../../web/src/WorkspaceDetail.js', () => ({
@@ -53,8 +63,14 @@ const workerActions: WorkerActions = {
 }
 
 describe('AppWorkspaceContent', () => {
-  test('passes started workspace shell runs to the optimistic run recorder', () => {
+  test('passes shell runs through the active workspace content boundary', () => {
     const onShellRunStarted = vi.fn()
+    const inactiveRun: TerminalRunSummary = {
+      agent_id: 'ws-2:shell',
+      agent_name: 'Shell 1',
+      run_id: 'inactive-shell-run',
+      status: 'running',
+    }
 
     render(
       <AppWorkspaceContent
@@ -67,7 +83,7 @@ describe('AppWorkspaceContent', () => {
         onRequestAddWorkspace={vi.fn()}
         onShellRunStarted={onShellRunStarted}
         onTryDemo={vi.fn()}
-        optimisticRunsByWorkspaceId={{}}
+        optimisticRunsByWorkspaceId={{ [workspace.id]: [shellRun], 'ws-2': [inactiveRun] }}
         orchestratorAutostartErrors={{}}
         orchestratorAutostartRunIds={{}}
         recordOrchestratorResult={vi.fn()}
@@ -76,6 +92,10 @@ describe('AppWorkspaceContent', () => {
         workers={[]}
       />
     )
+
+    expect(screen.getByTestId('terminal-panels')).toHaveAttribute('data-workspace-id', workspace.id)
+    expect(screen.getByTestId('terminal-panels')).toHaveTextContent(shellRun.run_id)
+    expect(screen.getByTestId('terminal-panels')).not.toHaveTextContent(inactiveRun.run_id)
 
     fireEvent.click(screen.getByTestId('emit-shell-run'))
 
