@@ -258,10 +258,14 @@ describe('WorkspaceDetail shell terminal button', () => {
       await ws1Start.promise
     })
 
-    vi.mocked(startWorkspaceShell).mockResolvedValueOnce(shellRun('ws-1-shell-run-2', workspace.id))
+    view.rerender(workspaceDetailUi({ selectedWorkspace: workspace, terminalRuns: [lateWs1Run] }))
+    const panel = await screen.findByTestId('terminal-bottom-panel')
+    expect(
+      within(panel).getByTestId(`terminal-panel-slot-shell-${lateWs1Run.run_id}`)
+    ).toBeInTheDocument()
+
     fireEvent.click(screen.getByTestId('open-workspace-shell'))
 
-    expect(startWorkspaceShell).toHaveBeenCalledTimes(2)
-    expect(startWorkspaceShell).toHaveBeenLastCalledWith(workspace.id)
+    expect(startWorkspaceShell).toHaveBeenCalledTimes(1)
   })
 })

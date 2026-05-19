@@ -67,7 +67,7 @@ export const WorkspaceDetail = ({
   // the user with shells named "Shell 1" / "Shell 3" / ... .
   const shellStartInFlightByWorkspaceRef = useRef(new Map<string, number>())
   const shellStartRequestSeqRef = useRef(0)
-  const shellStartWorkspaceIdRef = useRef<string | null>(workspace?.id ?? null)
+  const selectedWorkspaceIdRef = useRef<string | null>(workspace?.id ?? null)
   const toast = useToast()
   const composer = useWorkerComposer({ createWorker: onCreateWorker, open: composerOpen })
 
@@ -93,10 +93,7 @@ export const WorkspaceDetail = ({
   }, [shellError, toast])
 
   useLayoutEffect(() => {
-    const workspaceId = workspace?.id ?? null
-    if (shellStartWorkspaceIdRef.current === workspaceId) return
-    shellStartWorkspaceIdRef.current = workspaceId
-    shellStartRequestSeqRef.current += 1
+    selectedWorkspaceIdRef.current = workspace?.id ?? null
   }, [workspace?.id])
 
   // B2: when the user switches workspace, clear local error state so we don't
@@ -188,24 +185,24 @@ export const WorkspaceDetail = ({
     const requestSeq = shellStartRequestSeqRef.current + 1
     shellStartRequestSeqRef.current = requestSeq
     shellStartInFlightByWorkspaceRef.current.set(requestWorkspaceId, requestSeq)
-    const isCurrentShellStart = () =>
-      shellStartWorkspaceIdRef.current === requestWorkspaceId &&
-      shellStartRequestSeqRef.current === requestSeq
+    const isSelectedWorkspace = () => selectedWorkspaceIdRef.current === requestWorkspaceId
+    const ownsInFlightMarker = () =>
+      shellStartInFlightByWorkspaceRef.current.get(requestWorkspaceId) === requestSeq
     setShellError(null)
     setShellStarting(true)
     void startWorkspaceShell(requestWorkspaceId)
       .then((run) => {
-        if (!isCurrentShellStart()) return
+        if (!isSelectedWorkspace()) return
         setShellRunId(run.run_id)
         panelTabs.openShellTab(run.run_id)
       })
       .catch((error) => {
-        if (!isCurrentShellStart()) return
+        if (!isSelectedWorkspace()) return
         setShellError(error instanceof Error ? error.message : String(error))
       })
       .finally(() => {
-        shellStartInFlightByWorkspaceRef.current.delete(requestWorkspaceId)
-        if (isCurrentShellStart()) setShellStarting(false)
+        if (ownsInFlightMarker()) shellStartInFlightByWorkspaceRef.current.delete(requestWorkspaceId)
+        if (isSelectedWorkspace()) setShellStarting(false)
       })
   }
 
