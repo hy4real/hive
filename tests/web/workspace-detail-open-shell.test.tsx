@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import type { TeamListItem, WorkspaceSummary } from '../../src/shared/types.js'
@@ -27,6 +27,12 @@ const workspace: WorkspaceSummary = {
   path: '/tmp/alpha',
 }
 
+const workspaceTwo: WorkspaceSummary = {
+  id: 'ws-2',
+  name: 'Beta',
+  path: '/tmp/beta',
+}
+
 const worker: TeamListItem = {
   id: 'worker-1',
   name: 'Alice',
@@ -35,8 +41,8 @@ const worker: TeamListItem = {
   status: 'idle',
 }
 
-const shellRun = (runId = 'shell-run-1'): TerminalRunSummary => ({
-  agent_id: `${workspace.id}:shell`,
+const shellRun = (runId = 'shell-run-1', workspaceId = workspace.id): TerminalRunSummary => ({
+  agent_id: `${workspaceId}:shell`,
   agent_name: 'Shell 1',
   run_id: runId,
   status: 'running',
@@ -49,7 +55,21 @@ const workerRun = (): TerminalRunSummary => ({
   status: 'running',
 })
 
-const renderWorkspaceDetail = (terminalRuns: TerminalRunSummary[] = []) =>
+const renderWorkspaceDetail = ({
+  selectedWorkspace = workspace,
+  terminalRuns = [],
+}: {
+  selectedWorkspace?: WorkspaceSummary
+  terminalRuns?: TerminalRunSummary[]
+} = {}) => renderWorkspaceDetailUi({ selectedWorkspace, terminalRuns })
+
+const renderWorkspaceDetailUi = ({
+  selectedWorkspace,
+  terminalRuns,
+}: {
+  selectedWorkspace: WorkspaceSummary
+  terminalRuns: TerminalRunSummary[]
+}) =>
   render(
     <ToastProvider>
       <NotificationProvider>
@@ -64,11 +84,47 @@ const renderWorkspaceDetail = (terminalRuns: TerminalRunSummary[] = []) =>
           orchestratorAutostartRunId={null}
           terminalRuns={terminalRuns}
           workers={[worker]}
-          workspace={workspace}
+          workspace={selectedWorkspace}
         />
       </NotificationProvider>
     </ToastProvider>
   )
+
+const workspaceDetailUi = ({
+  selectedWorkspace,
+  terminalRuns,
+}: {
+  selectedWorkspace: WorkspaceSummary
+  terminalRuns: TerminalRunSummary[]
+}) => (
+  <ToastProvider>
+    <NotificationProvider>
+      <WorkspaceDetail
+        onCreateWorker={vi.fn()}
+        onDeleteWorker={vi.fn()}
+        onDeleteWorkspace={vi.fn()}
+        onStartWorker={vi.fn()}
+        onOrchestratorResult={vi.fn()}
+        onRequestAddWorkspace={vi.fn()}
+        orchestratorAutostartError={null}
+        orchestratorAutostartRunId={null}
+        terminalRuns={terminalRuns}
+        workers={[worker]}
+        workspace={selectedWorkspace}
+      />
+    </NotificationProvider>
+  </ToastProvider>
+)
+
+const deferred = <T,>() => {
+  let resolve!: (value: T) => void
+  let reject!: (error: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+  return { promise, resolve, reject }
+}
 
 beforeEach(() => {
   window.localStorage.clear()
@@ -83,23 +139,36 @@ afterEach(() => {
 
 describe('WorkspaceDetail shell terminal button', () => {
   test('starts a workspace shell when there is no shell tab or shell run', async () => {
-    vi.mocked(startWorkspaceShell).mockResolvedValue(shellRun())
+    const run = shellRun()
+    vi.mocked(startWorkspaceShell).mockResolvedValue(run)
 
-    renderWorkspaceDetail()
+    const view = renderWorkspaceDetail()
     fireEvent.click(screen.getByTestId('open-workspace-shell'))
 
     expect(startWorkspaceShell).toHaveBeenCalledTimes(1)
     expect(startWorkspaceShell).toHaveBeenCalledWith(workspace.id)
+
+    view.rerender(workspaceDetailUi({ selectedWorkspace: workspace, terminalRuns: [run] }))
+    const panel = await screen.findByTestId('terminal-bottom-panel')
+    expect(within(panel).getByTestId(`terminal-panel-slot-shell-${run.run_id}`)).toBeInTheDocument()
   })
 
   test('starts a workspace shell when only a stale shell run exists without a shell tab', async () => {
-    vi.mocked(startWorkspaceShell).mockResolvedValue(shellRun('shell-run-2'))
+    const staleRun = shellRun()
+    const run = shellRun('shell-run-2')
+    vi.mocked(startWorkspaceShell).mockResolvedValue(run)
 
-    renderWorkspaceDetail([shellRun()])
+    const view = renderWorkspaceDetail({ terminalRuns: [staleRun] })
     fireEvent.click(screen.getByTestId('open-workspace-shell'))
 
     expect(startWorkspaceShell).toHaveBeenCalledTimes(1)
     expect(startWorkspaceShell).toHaveBeenCalledWith(workspace.id)
+
+    view.rerender(
+      workspaceDetailUi({ selectedWorkspace: workspace, terminalRuns: [staleRun, run] })
+    )
+    const panel = await screen.findByTestId('terminal-bottom-panel')
+    expect(within(panel).getByTestId(`terminal-panel-slot-shell-${run.run_id}`)).toBeInTheDocument()
   })
 
   test('focuses an existing shell tab without starting another shell', async () => {
@@ -110,7 +179,7 @@ describe('WorkspaceDetail shell terminal button', () => {
     )
     window.localStorage.setItem(`hive.terminal-panel.active.${workspace.id}`, `worker:${worker.id}`)
 
-    renderWorkspaceDetail([workerRun(), shell])
+    renderWorkspaceDetail({ terminalRuns: [workerRun(), shell] })
     const panel = await screen.findByTestId('terminal-bottom-panel')
     expect(within(panel).getByTestId(`terminal-panel-slot-worker-${worker.id}`)).toBeInTheDocument()
 
@@ -122,6 +191,39 @@ describe('WorkspaceDetail shell terminal button', () => {
       ).toBeInTheDocument()
     })
     expect(startWorkspaceShell).not.toHaveBeenCalled()
+  })
+
+  test('ignores a resolved shell start after switching workspaces', async () => {
+    const ws1Start = deferred<TerminalRunSummary>()
+    const ws2Run = shellRun('ws-2-shell-run-1', workspaceTwo.id)
+    vi.mocked(startWorkspaceShell)
+      .mockReturnValueOnce(ws1Start.promise)
+      .mockResolvedValueOnce(ws2Run)
+
+    const view = renderWorkspaceDetail()
+    fireEvent.click(screen.getByTestId('open-workspace-shell'))
+    expect(startWorkspaceShell).toHaveBeenCalledWith(workspace.id)
+
+    view.rerender(workspaceDetailUi({ selectedWorkspace: workspaceTwo, terminalRuns: [] }))
+    const lateWs1Run = shellRun('ws-1-late-shell-run', workspace.id)
+    await act(async () => {
+      ws1Start.resolve(lateWs1Run)
+      await ws1Start.promise
+    })
+
+    const storedTabs = window.localStorage.getItem(`hive.terminal-panel.tabs.${workspaceTwo.id}`)
+    expect(storedTabs ?? '').not.toContain(lateWs1Run.run_id)
+    expect(screen.queryByTestId('terminal-bottom-panel')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('open-workspace-shell'))
+    expect(startWorkspaceShell).toHaveBeenCalledTimes(2)
+    expect(startWorkspaceShell).toHaveBeenLastCalledWith(workspaceTwo.id)
+
+    view.rerender(workspaceDetailUi({ selectedWorkspace: workspaceTwo, terminalRuns: [ws2Run] }))
+    const panel = await screen.findByTestId('terminal-bottom-panel')
+    expect(
+      within(panel).getByTestId(`terminal-panel-slot-shell-${ws2Run.run_id}`)
+    ).toBeInTheDocument()
   })
 
   test('does not start more than one workspace shell while a start is in flight', () => {

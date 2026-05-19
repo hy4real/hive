@@ -66,6 +66,12 @@ export const WorkspaceDetail = ({
   // The server's shell numbering counter would otherwise skip ahead, leaving
   // the user with shells named "Shell 1" / "Shell 3" / ... .
   const shellStartInFlightRef = useRef(false)
+  const shellStartRequestSeqRef = useRef(0)
+  const shellStartWorkspaceIdRef = useRef<string | null>(workspace?.id ?? null)
+  if (shellStartWorkspaceIdRef.current !== (workspace?.id ?? null)) {
+    shellStartWorkspaceIdRef.current = workspace?.id ?? null
+    shellStartRequestSeqRef.current += 1
+  }
   const toast = useToast()
   const composer = useWorkerComposer({ createWorker: onCreateWorker, open: composerOpen })
 
@@ -177,17 +183,26 @@ export const WorkspaceDetail = ({
   const startShell = () => {
     if (shellStartInFlightRef.current) return
     shellStartInFlightRef.current = true
+    const requestWorkspaceId = workspace.id
+    const requestSeq = shellStartRequestSeqRef.current + 1
+    shellStartRequestSeqRef.current = requestSeq
+    const isCurrentShellStart = () =>
+      shellStartWorkspaceIdRef.current === requestWorkspaceId &&
+      shellStartRequestSeqRef.current === requestSeq
     setShellError(null)
     setShellStarting(true)
-    void startWorkspaceShell(workspace.id)
+    void startWorkspaceShell(requestWorkspaceId)
       .then((run) => {
+        if (!isCurrentShellStart()) return
         setShellRunId(run.run_id)
         panelTabs.openShellTab(run.run_id)
       })
       .catch((error) => {
+        if (!isCurrentShellStart()) return
         setShellError(error instanceof Error ? error.message : String(error))
       })
       .finally(() => {
+        if (!isCurrentShellStart()) return
         shellStartInFlightRef.current = false
         setShellStarting(false)
       })
