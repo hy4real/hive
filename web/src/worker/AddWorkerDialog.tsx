@@ -11,6 +11,7 @@ import {
   AgentCliPicker,
   RoleInstructionsField,
   RolePicker,
+  RoleTemplatePicker,
   SectionLabel,
   StartupCommandField,
 } from './AddWorkerDialogFields.js'
@@ -31,7 +32,7 @@ type AddWorkerDialogProps = {
   onSaveAsTemplate: (name: string) => Promise<void> | void
   onStartupCommandChange: (value: string) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
-  onTemplateChange: (templateId: string) => void
+  onTemplateChange: (templateId: string | null) => void
   roleDescription: string
   roleDescriptionDefault: string
   selectedTemplateId: string | null
@@ -39,6 +40,7 @@ type AddWorkerDialogProps = {
   templateBusy: boolean
   workerName: string
   workerRole: WorkerRole
+  writeDisabledReason?: string
 }
 
 export const AddWorkerDialog = ({
@@ -65,6 +67,7 @@ export const AddWorkerDialog = ({
   templateBusy,
   workerName,
   workerRole,
+  writeDisabledReason,
 }: AddWorkerDialogProps) => {
   const { t } = useI18n()
   const toast = useToast()
@@ -79,6 +82,7 @@ export const AddWorkerDialog = ({
   // the user always gets actionable feedback (a warning toast) instead of
   // a silently-greyed CTA. Returns the first blocking reason or null.
   const validateBeforeSubmit = (): string | null => {
+    if (writeDisabledReason) return writeDisabledReason
     if (!workerName.trim()) return t('addWorker.enterName')
     if (!commandPresetId && !startupCommandClean) return t('addWorker.pickCliOrStartup')
     if (selectedPreset?.available === false && !startupCommandClean) {
@@ -158,14 +162,16 @@ export const AddWorkerDialog = ({
                   />
                 </label>
 
-                <RolePicker
-                  customTemplates={customTemplates}
-                  onDeleteTemplate={onDeleteTemplate}
-                  onRoleChange={onRoleChange}
-                  onTemplateChange={onTemplateChange}
-                  selectedTemplateId={selectedTemplateId}
-                  workerRole={workerRole}
-                />
+                <RolePicker workerRole={workerRole} onRoleChange={onRoleChange} />
+                {workerRole === 'custom' ? (
+                  <RoleTemplatePicker
+                    customTemplates={customTemplates}
+                    disabledReason={writeDisabledReason}
+                    onDeleteTemplate={onDeleteTemplate}
+                    onSelect={onTemplateChange}
+                    selectedTemplateId={selectedTemplateId}
+                  />
+                ) : null}
                 <RoleInstructionsField
                   canSaveAsTemplate={
                     workerRole === 'custom' &&
@@ -179,6 +185,7 @@ export const AddWorkerDialog = ({
                   roleDescription={roleDescription}
                   templateBusy={templateBusy}
                   workerRole={workerRole}
+                  writeDisabledReason={writeDisabledReason}
                 />
                 <AgentCliPicker
                   commandPresetId={commandPresetId}
@@ -202,7 +209,8 @@ export const AddWorkerDialog = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={creating}
+                  disabled={creating || Boolean(writeDisabledReason)}
+                  title={writeDisabledReason ?? undefined}
                   className="icon-btn icon-btn--primary"
                   data-testid="add-worker-submit"
                 >

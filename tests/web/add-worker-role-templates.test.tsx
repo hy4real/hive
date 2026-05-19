@@ -83,7 +83,6 @@ beforeEach(() => {
       available: true,
     },
   ])
-  // Each test sets up its own listRoleTemplates response.
 })
 
 afterEach(() => {
@@ -92,29 +91,49 @@ afterEach(() => {
 })
 
 describe('Add Worker dialog: custom role templates', () => {
-  test('renders builtin role cards plus all custom role templates', async () => {
+  test('template picker stays hidden when a builtin role is selected', async () => {
     listRoleTemplates.mockResolvedValue([
       {
-        id: 'builtin-coder',
-        name: 'Coder',
-        roleType: 'coder',
-        description: 'builtin coder',
-        isBuiltin: true,
+        id: 'tpl-doc',
+        name: 'Doc Writer',
+        roleType: 'custom',
+        description: 'Writes documentation.',
+        isBuiltin: false,
       },
+    ])
+
+    render(<Harness />)
+
+    // Default workerRole is 'coder', so the template picker should not render.
+    await waitFor(() => {
+      expect(screen.getByTestId('role-card-coder')).toBeInTheDocument()
+    })
+    expect(screen.queryByTestId('role-template-picker-trigger')).toBeNull()
+  })
+
+  test('template picker appears only after selecting the Custom role card', async () => {
+    listRoleTemplates.mockResolvedValue([
       {
-        id: 'builtin-reviewer',
-        name: 'Reviewer',
-        roleType: 'reviewer',
-        description: 'builtin reviewer',
-        isBuiltin: true,
+        id: 'tpl-doc',
+        name: 'Doc Writer',
+        roleType: 'custom',
+        description: 'Writes documentation.',
+        isBuiltin: false,
       },
-      {
-        id: 'builtin-tester',
-        name: 'Tester',
-        roleType: 'tester',
-        description: 'builtin tester',
-        isBuiltin: true,
-      },
+    ])
+
+    render(<Harness />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('role-card-custom')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByTestId('role-card-custom'))
+
+    expect(screen.getByTestId('role-template-picker-trigger')).toBeInTheDocument()
+  })
+
+  test('opening the picker reveals custom templates with search and delete controls', async () => {
+    listRoleTemplates.mockResolvedValue([
       {
         id: 'tpl-doc',
         name: 'Doc Writer',
@@ -123,7 +142,7 @@ describe('Add Worker dialog: custom role templates', () => {
         isBuiltin: false,
       },
       {
-        id: 'tpl-translator',
+        id: 'tpl-tr',
         name: 'Translator',
         roleType: 'custom',
         description: 'Translates content.',
@@ -133,17 +152,58 @@ describe('Add Worker dialog: custom role templates', () => {
 
     render(<Harness />)
 
-    expect(screen.getByTestId('role-card-coder')).toBeInTheDocument()
-    expect(screen.getByTestId('role-card-reviewer')).toBeInTheDocument()
-    expect(screen.getByTestId('role-card-tester')).toBeInTheDocument()
-    expect(screen.getByTestId('role-card-custom')).toBeInTheDocument()
     await waitFor(() => {
-      expect(screen.getByTestId('role-card-template-tpl-doc')).toBeInTheDocument()
+      expect(screen.getByTestId('role-card-custom')).toBeInTheDocument()
     })
-    expect(screen.getByTestId('role-card-template-tpl-translator')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('role-card-custom'))
+
+    // Picker starts closed; opening reveals the search input and options.
+    expect(screen.queryByTestId('role-template-picker-menu')).toBeNull()
+    fireEvent.click(screen.getByTestId('role-template-picker-trigger'))
+
+    expect(screen.getByTestId('role-template-picker-menu')).toBeInTheDocument()
+    expect(screen.getByTestId('role-template-search-input')).toBeInTheDocument()
+    expect(screen.getByTestId('role-template-option-tpl-doc')).toBeInTheDocument()
+    expect(screen.getByTestId('role-template-option-tpl-tr')).toBeInTheDocument()
+    expect(screen.getByTestId('role-template-delete-tpl-doc')).toBeInTheDocument()
+    expect(screen.getByTestId('role-template-delete-tpl-tr')).toBeInTheDocument()
   })
 
-  test('clicking a custom template fills the description textarea', async () => {
+  test('typing in the search input filters the visible options', async () => {
+    listRoleTemplates.mockResolvedValue([
+      {
+        id: 'tpl-doc',
+        name: 'Doc Writer',
+        roleType: 'custom',
+        description: 'Writes documentation.',
+        isBuiltin: false,
+      },
+      {
+        id: 'tpl-tr',
+        name: 'Translator',
+        roleType: 'custom',
+        description: 'Translates content.',
+        isBuiltin: false,
+      },
+    ])
+
+    render(<Harness />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('role-card-custom')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByTestId('role-card-custom'))
+    fireEvent.click(screen.getByTestId('role-template-picker-trigger'))
+
+    fireEvent.change(screen.getByTestId('role-template-search-input'), {
+      target: { value: 'trans' },
+    })
+
+    expect(screen.queryByTestId('role-template-option-tpl-doc')).toBeNull()
+    expect(screen.getByTestId('role-template-option-tpl-tr')).toBeInTheDocument()
+  })
+
+  test('selecting an option fills the description textarea and closes the menu', async () => {
     listRoleTemplates.mockResolvedValue([
       {
         id: 'tpl-doc',
@@ -156,20 +216,27 @@ describe('Add Worker dialog: custom role templates', () => {
 
     render(<Harness />)
 
-    const card = await screen.findByTestId('role-card-template-tpl-doc')
-    fireEvent.click(card)
+    await waitFor(() => {
+      expect(screen.getByTestId('role-card-custom')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByTestId('role-card-custom'))
+    fireEvent.click(screen.getByTestId('role-template-picker-trigger'))
+    fireEvent.click(screen.getByTestId('role-template-option-tpl-doc'))
 
     const textarea = screen.getByTestId('role-instructions-textarea') as HTMLTextAreaElement
     expect(textarea.value).toBe('Writes documentation in plain language.')
+    expect(screen.queryByTestId('role-template-picker-menu')).toBeNull()
+    // The trigger should now show the selected template's name.
+    expect(screen.getByTestId('role-template-picker-trigger').textContent).toContain('Doc Writer')
   })
 
-  test('only custom template cards expose a delete control', async () => {
+  test('clear option resets the selection while staying on Custom', async () => {
     listRoleTemplates.mockResolvedValue([
       {
         id: 'tpl-doc',
         name: 'Doc Writer',
         roleType: 'custom',
-        description: 'Writes docs.',
+        description: 'Writes documentation.',
         isBuiltin: false,
       },
     ])
@@ -177,15 +244,23 @@ describe('Add Worker dialog: custom role templates', () => {
     render(<Harness />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('role-template-delete-tpl-doc')).toBeInTheDocument()
+      expect(screen.getByTestId('role-card-custom')).toBeInTheDocument()
     })
-    expect(screen.queryByTestId('role-template-delete-coder')).toBeNull()
-    expect(screen.queryByTestId('role-template-delete-reviewer')).toBeNull()
-    expect(screen.queryByTestId('role-template-delete-tester')).toBeNull()
-    expect(screen.queryByTestId('role-template-delete-custom')).toBeNull()
+    fireEvent.click(screen.getByTestId('role-card-custom'))
+    fireEvent.click(screen.getByTestId('role-template-picker-trigger'))
+    fireEvent.click(screen.getByTestId('role-template-option-tpl-doc'))
+    // re-open and clear
+    fireEvent.click(screen.getByTestId('role-template-picker-trigger'))
+    fireEvent.click(screen.getByTestId('role-template-clear'))
+
+    // Still on Custom role; trigger label resets to the placeholder.
+    expect(screen.getByTestId('role-card-custom').getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByTestId('role-template-picker-trigger').textContent).not.toContain(
+      'Doc Writer'
+    )
   })
 
-  test('confirming delete calls deleteRoleTemplate and removes the card', async () => {
+  test('deleting a template via the picker calls the API and removes the option', async () => {
     listRoleTemplates.mockResolvedValue([
       {
         id: 'tpl-doc',
@@ -199,8 +274,12 @@ describe('Add Worker dialog: custom role templates', () => {
 
     render(<Harness />)
 
-    const deleteBtn = await screen.findByTestId('role-template-delete-tpl-doc')
-    fireEvent.click(deleteBtn)
+    await waitFor(() => {
+      expect(screen.getByTestId('role-card-custom')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByTestId('role-card-custom'))
+    fireEvent.click(screen.getByTestId('role-template-picker-trigger'))
+    fireEvent.click(screen.getByTestId('role-template-delete-tpl-doc'))
 
     const confirmAction = await screen.findByTestId('confirm-action')
     fireEvent.click(confirmAction)
@@ -208,20 +287,35 @@ describe('Add Worker dialog: custom role templates', () => {
     await waitFor(() => {
       expect(deleteRoleTemplate).toHaveBeenCalledWith('tpl-doc')
     })
+    // Picker stays open; the deleted option is gone.
     await waitFor(() => {
-      expect(screen.queryByTestId('role-card-template-tpl-doc')).toBeNull()
+      expect(screen.queryByTestId('role-template-option-tpl-doc')).toBeNull()
     })
   })
 
-  test('save-as-template control only appears on the new-Custom card with non-empty description', async () => {
+  test('picker shows an empty-state hint when no custom templates exist', async () => {
     listRoleTemplates.mockResolvedValue([])
 
     render(<Harness />)
 
-    // initially coder is selected, so save-as-template is hidden
     await waitFor(() => {
       expect(screen.getByTestId('role-card-custom')).toBeInTheDocument()
     })
+    fireEvent.click(screen.getByTestId('role-card-custom'))
+    fireEvent.click(screen.getByTestId('role-template-picker-trigger'))
+
+    expect(screen.getByTestId('role-template-empty-state')).toBeInTheDocument()
+  })
+
+  test('save-as-template button shows only on the new-Custom card with description', async () => {
+    listRoleTemplates.mockResolvedValue([])
+
+    render(<Harness />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('role-card-custom')).toBeInTheDocument()
+    })
+    // initially coder selected; save button hidden
     expect(screen.queryByTestId('role-template-save')).toBeNull()
 
     fireEvent.click(screen.getByTestId('role-card-custom'))
@@ -231,7 +325,7 @@ describe('Add Worker dialog: custom role templates', () => {
     expect(screen.getByTestId('role-template-save')).toBeInTheDocument()
   })
 
-  test('saving as template POSTs and surfaces the new card as selected', async () => {
+  test('save-as-template flow posts and auto-selects the new template', async () => {
     listRoleTemplates.mockResolvedValue([])
     createRoleTemplate.mockResolvedValue({
       id: 'tpl-new',
@@ -251,7 +345,6 @@ describe('Add Worker dialog: custom role templates', () => {
     fireEvent.change(textarea, { target: { value: 'My custom role.' } })
 
     fireEvent.click(screen.getByTestId('role-template-save'))
-
     const nameInput = await screen.findByTestId('role-template-save-name')
     fireEvent.change(nameInput, { target: { value: 'Doc Writer' } })
     fireEvent.click(screen.getByTestId('role-template-save-confirm'))
@@ -263,16 +356,14 @@ describe('Add Worker dialog: custom role templates', () => {
         description: 'My custom role.',
       })
     })
+    // Trigger label updates; save button hides because a template is now selected.
     await waitFor(() => {
-      expect(screen.getByTestId('role-card-template-tpl-new')).toBeInTheDocument()
+      expect(screen.getByTestId('role-template-picker-trigger').textContent).toContain('Doc Writer')
     })
-    // The newly saved template is selected: its delete control is for tpl-new
-    // and the save-as-template button should now hide (because a template is
-    // selected, not a blank Custom).
     expect(screen.queryByTestId('role-template-save')).toBeNull()
   })
 
-  test('cancelling the inline name prompt does not call createRoleTemplate', async () => {
+  test('cancelling the inline save prompt does not call createRoleTemplate', async () => {
     listRoleTemplates.mockResolvedValue([])
 
     render(<Harness />)
@@ -290,7 +381,6 @@ describe('Add Worker dialog: custom role templates', () => {
 
     expect(createRoleTemplate).not.toHaveBeenCalled()
     expect(screen.queryByTestId('role-template-save-name')).toBeNull()
-    // The save button comes back so user can retry.
     expect(screen.getByTestId('role-template-save')).toBeInTheDocument()
   })
 })

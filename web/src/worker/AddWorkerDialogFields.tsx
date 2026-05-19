@@ -1,6 +1,6 @@
-import { Check, ChevronDown, RotateCcw, Trash2 } from 'lucide-react'
+import { Check, ChevronDown, RotateCcw, Search, Trash2 } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import type { WorkerRole } from '../../../src/shared/types.js'
 import type { CommandPreset, RoleTemplate } from '../api.js'
@@ -54,131 +54,200 @@ const RoleCard = ({
   )
 }
 
-const CustomTemplateCard = ({
-  active,
-  template,
-  onSelect,
-  onDelete,
+export const RolePicker = ({
+  onRoleChange,
+  workerRole,
 }: {
-  active: boolean
-  template: RoleTemplate
-  onSelect: () => void
-  onDelete: () => void
+  onRoleChange: (value: WorkerRole) => void
+  workerRole: WorkerRole
 }) => {
   const { t } = useI18n()
   return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={onSelect}
-        aria-pressed={active}
-        data-testid={`role-card-template-${template.id}`}
-        className="selectable-card flex w-full items-center gap-3 px-3 py-2 pr-9"
-      >
-        <RoleAvatar role={template.roleType} size={20} />
-        <span className="min-w-0 flex-1 truncate text-left text-base font-medium text-pri">
-          {template.name}
-        </span>
-        {active ? <Check size={14} className="shrink-0 text-accent" aria-hidden /> : null}
-      </button>
-      <button
-        type="button"
-        onClick={(event) => {
-          event.preventDefault()
-          event.stopPropagation()
-          onDelete()
-        }}
-        aria-label={t('addWorker.templateDeleteAria', { name: template.name })}
-        data-testid={`role-template-delete-${template.id}`}
-        className="absolute right-1 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded text-ter transition-colors hover:bg-3 hover:text-pri"
-      >
-        <Trash2 size={14} aria-hidden />
-      </button>
+    <div className="flex flex-col gap-2">
+      <SectionLabel>{t('addWorker.role')}</SectionLabel>
+      <div className="grid grid-cols-2 gap-2">
+        {ROLE_CARDS.map((spec) => (
+          <RoleCard
+            key={spec.value}
+            active={workerRole === spec.value}
+            spec={spec}
+            onSelect={() => onRoleChange(spec.value)}
+          />
+        ))}
+      </div>
     </div>
   )
 }
 
-export const RolePicker = ({
+export const RoleTemplatePicker = ({
   customTemplates,
+  disabledReason,
   onDeleteTemplate,
-  onRoleChange,
-  onTemplateChange,
+  onSelect,
   selectedTemplateId,
-  workerRole,
 }: {
   customTemplates: RoleTemplate[]
+  disabledReason?: string
   onDeleteTemplate: (templateId: string) => Promise<void> | void
-  onRoleChange: (value: WorkerRole) => void
-  onTemplateChange: (templateId: string) => void
+  onSelect: (templateId: string | null) => void
   selectedTemplateId: string | null
-  workerRole: WorkerRole
-}) => (
-  <div className="flex flex-col gap-2">
-    <RolePickerInner
-      customTemplates={customTemplates}
-      onDeleteTemplate={onDeleteTemplate}
-      onRoleChange={onRoleChange}
-      onTemplateChange={onTemplateChange}
-      selectedTemplateId={selectedTemplateId}
-      workerRole={workerRole}
-    />
-  </div>
-)
-
-const RolePickerInner = ({
-  customTemplates,
-  onDeleteTemplate,
-  onRoleChange,
-  onTemplateChange,
-  selectedTemplateId,
-  workerRole,
-}: {
-  customTemplates: RoleTemplate[]
-  onDeleteTemplate: (templateId: string) => Promise<void> | void
-  onRoleChange: (value: WorkerRole) => void
-  onTemplateChange: (templateId: string) => void
-  selectedTemplateId: string | null
-  workerRole: WorkerRole
 }) => {
   const { t } = useI18n()
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
   const [deletingTemplate, setDeletingTemplate] = useState<RoleTemplate | null>(null)
-  // The Custom card is active only when no specific template is selected.
-  const customCardActive = workerRole === 'custom' && !selectedTemplateId
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const selectedTemplate = useMemo(
+    () => customTemplates.find((template) => template.id === selectedTemplateId) ?? null,
+    [customTemplates, selectedTemplateId]
+  )
+
+  const filteredTemplates = useMemo(() => {
+    const trimmed = query.trim().toLowerCase()
+    if (!trimmed) return customTemplates
+    return customTemplates.filter(
+      (template) =>
+        template.name.toLowerCase().includes(trimmed) ||
+        template.description.toLowerCase().includes(trimmed)
+    )
+  }, [customTemplates, query])
+
+  useEffect(() => {
+    if (!open) return
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    const handlePointer = (event: PointerEvent) => {
+      const root = containerRef.current
+      if (root && !root.contains(event.target as Node)) setOpen(false)
+    }
+    document.addEventListener('keydown', handleKey)
+    document.addEventListener('pointerdown', handlePointer)
+    return () => {
+      document.removeEventListener('keydown', handleKey)
+      document.removeEventListener('pointerdown', handlePointer)
+    }
+  }, [open])
+
   return (
-    <>
-      <SectionLabel>{t('addWorker.role')}</SectionLabel>
-      <div className="grid grid-cols-2 gap-2">
-        {ROLE_CARDS.map((spec) =>
-          spec.value === 'custom' ? (
-            <RoleCard
-              key={spec.value}
-              active={customCardActive}
-              spec={spec}
-              onSelect={() => onRoleChange('custom')}
-            />
-          ) : (
-            <RoleCard
-              key={spec.value}
-              active={workerRole === spec.value && !selectedTemplateId}
-              spec={spec}
-              onSelect={() => onRoleChange(spec.value)}
-            />
-          )
-        )}
-        {customTemplates.map((template) => (
-          <CustomTemplateCard
-            key={template.id}
-            active={selectedTemplateId === template.id}
-            template={template}
-            onSelect={() => onTemplateChange(template.id)}
-            onDelete={() => setDeletingTemplate(template)}
-          />
-        ))}
+    <div className="flex flex-col gap-2">
+      <SectionLabel>{t('addWorker.template')}</SectionLabel>
+      <div ref={containerRef} className="relative">
+        <button
+          type="button"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          data-testid="role-template-picker-trigger"
+          onClick={() => setOpen((value) => !value)}
+          className="flex w-full items-center justify-between gap-2 rounded border px-3 py-2 text-left text-sm transition-colors hover:bg-3"
+          style={{ borderColor: 'var(--border)', background: 'var(--bg-1)' }}
+        >
+          <span className="min-w-0 flex-1 truncate text-pri">
+            {selectedTemplate ? selectedTemplate.name : t('addWorker.templatePickPlaceholder')}
+          </span>
+          <ChevronDown size={14} className="shrink-0 text-ter" aria-hidden />
+        </button>
+        {open ? (
+          <div
+            role="listbox"
+            aria-label={t('addWorker.template')}
+            data-testid="role-template-picker-menu"
+            className="elev-2 absolute left-0 right-0 top-full z-30 mt-1 flex max-h-72 flex-col overflow-hidden rounded border"
+            style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-bright)' }}
+          >
+            <div
+              className="flex items-center gap-2 border-b px-2 py-1.5"
+              style={{ borderColor: 'var(--border)' }}
+            >
+              <Search size={14} className="text-ter" aria-hidden />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.currentTarget.value)}
+                placeholder={t('addWorker.templateSearchPlaceholder')}
+                data-testid="role-template-search-input"
+                className="w-full bg-transparent text-sm text-pri outline-none placeholder:text-ter"
+                spellCheck={false}
+              />
+            </div>
+            <div className="flex-1 overflow-y-auto py-1">
+              {customTemplates.length === 0 ? (
+                <div
+                  data-testid="role-template-empty-state"
+                  className="px-3 py-3 text-center text-sm text-ter"
+                >
+                  {t('addWorker.templateEmpty')}
+                </div>
+              ) : filteredTemplates.length === 0 ? (
+                <div className="px-3 py-3 text-center text-sm text-ter">
+                  {t('addWorker.templateNoMatch')}
+                </div>
+              ) : (
+                filteredTemplates.map((template) => {
+                  const isSelected = template.id === selectedTemplateId
+                  return (
+                    <div key={template.id} className="relative">
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={isSelected}
+                        data-testid={`role-template-option-${template.id}`}
+                        onClick={() => {
+                          onSelect(template.id)
+                          setOpen(false)
+                          setQuery('')
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 pr-9 text-left text-sm text-pri hover:bg-3"
+                        style={isSelected ? { background: 'var(--bg-3)' } : undefined}
+                      >
+                        <span className="min-w-0 flex-1 truncate">{template.name}</span>
+                        {isSelected ? (
+                          <Check size={14} className="shrink-0 text-accent" aria-hidden />
+                        ) : null}
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={t('addWorker.templateDeleteAria', { name: template.name })}
+                        data-testid={`role-template-delete-${template.id}`}
+                        disabled={Boolean(disabledReason)}
+                        title={disabledReason ?? undefined}
+                        onClick={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          if (disabledReason) return
+                          setDeletingTemplate(template)
+                        }}
+                        className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-ter transition-colors hover:bg-3 hover:text-pri"
+                      >
+                        <Trash2 size={14} aria-hidden />
+                      </button>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+            {selectedTemplateId !== null ? (
+              <button
+                type="button"
+                data-testid="role-template-clear"
+                onClick={() => {
+                  onSelect(null)
+                  setOpen(false)
+                  setQuery('')
+                }}
+                className="border-t px-3 py-1.5 text-left text-sm text-ter transition-colors hover:bg-3 hover:text-pri"
+                style={{ borderColor: 'var(--border)' }}
+              >
+                {t('addWorker.templateClear')}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
       <Confirm
         open={deletingTemplate !== null}
-        onOpenChange={(open) => {
-          if (!open) setDeletingTemplate(null)
+        onOpenChange={(value) => {
+          if (!value) setDeletingTemplate(null)
         }}
         title={t('addWorker.templateDeleteTitle')}
         description={
@@ -189,13 +258,13 @@ const RolePickerInner = ({
         confirmLabel={t('addWorker.templateDeleteConfirmLabel')}
         confirmKind="danger"
         onConfirm={() => {
-          if (!deletingTemplate) return
+          if (!deletingTemplate || disabledReason) return
           const id = deletingTemplate.id
           setDeletingTemplate(null)
           void onDeleteTemplate(id)
         }}
       />
-    </>
+    </div>
   )
 }
 
@@ -208,6 +277,7 @@ export const RoleInstructionsField = ({
   roleDescription,
   templateBusy,
   workerRole,
+  writeDisabledReason,
 }: {
   canSaveAsTemplate: boolean
   modified: boolean
@@ -217,6 +287,7 @@ export const RoleInstructionsField = ({
   roleDescription: string
   templateBusy: boolean
   workerRole: WorkerRole
+  writeDisabledReason?: string
 }) => {
   const { t } = useI18n()
   const [instructionsOpen, setInstructionsOpen] = useState(false)
@@ -283,6 +354,8 @@ export const RoleInstructionsField = ({
         <button
           type="button"
           data-testid="role-template-save"
+          disabled={Boolean(writeDisabledReason)}
+          title={writeDisabledReason ?? undefined}
           onClick={() => setSaving(true)}
           className="self-start rounded px-2 py-1 text-xs text-sec transition-colors hover:bg-3 hover:text-pri"
         >
@@ -302,9 +375,11 @@ export const RoleInstructionsField = ({
           />
           <button
             type="button"
-            disabled={templateBusy || !templateName.trim()}
+            disabled={templateBusy || !templateName.trim() || Boolean(writeDisabledReason)}
+            title={writeDisabledReason ?? undefined}
             data-testid="role-template-save-confirm"
             onClick={async () => {
+              if (writeDisabledReason) return
               const name = templateName.trim()
               if (!name) return
               try {

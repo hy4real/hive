@@ -38,7 +38,7 @@ export interface WorkerComposerState {
   setStartupCommand: (value: string) => void
   setWorkerName: (value: string) => void
   setWorkerRole: (value: WorkerRole) => void
-  selectTemplate: (templateId: string) => void
+  selectTemplate: (templateId: string | null) => void
   saveAsTemplate: (name: string) => Promise<void>
   deleteTemplate: (templateId: string) => Promise<void>
   randomizeWorkerName: () => void
@@ -238,7 +238,15 @@ export const useWorkerComposer = ({
     setRoleDescriptionState(getDefaultDescription(value, roleTemplates, language))
   }
 
-  const selectTemplate = (templateId: string) => {
+  const selectTemplate = (templateId: string | null) => {
+    if (templateId === null) {
+      // Clear selection but stay on the Custom role with the blank default.
+      setWorkerRole('custom')
+      setSelectedTemplateId(null)
+      roleDescriptionEditedRef.current = false
+      setRoleDescriptionState(fallbackRoleDescriptions[language].custom)
+      return
+    }
     const template = roleTemplates.find((entry) => entry.id === templateId)
     if (!template || template.isBuiltin) return
     setWorkerRole('custom')
