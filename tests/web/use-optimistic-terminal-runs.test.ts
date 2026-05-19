@@ -1,7 +1,13 @@
+// @vitest-environment jsdom
+
+import { act, renderHook } from '@testing-library/react'
 import { describe, expect, test } from 'vitest'
 
 import type { TerminalRunSummary } from '../../web/src/api.js'
-import { mergeTerminalRuns } from '../../web/src/terminal/useOptimisticTerminalRuns.js'
+import {
+  mergeTerminalRuns,
+  useOptimisticTerminalRuns,
+} from '../../web/src/terminal/useOptimisticTerminalRuns.js'
 
 const terminalRun = (
   runId: string,
@@ -27,5 +33,54 @@ describe('mergeTerminalRuns', () => {
     const optimistic = [terminalRun('worker-run-2', 'worker-1', 'Alice')]
 
     expect(mergeTerminalRuns(actual, optimistic, 'ws-1')).toEqual(actual)
+  })
+})
+
+describe('useOptimisticTerminalRuns', () => {
+  test('records multiple optimistic workspace shell runs with the same shell agent id', () => {
+    const { result } = renderHook(() => useOptimisticTerminalRuns('ws-1', []))
+
+    act(() => {
+      result.current.recordOptimisticRun({
+        agentId: 'ws-1:shell',
+        agentName: 'Shell 1',
+        runId: 'shell-run-1',
+        status: 'running',
+        workspaceId: 'ws-1',
+      })
+      result.current.recordOptimisticRun({
+        agentId: 'ws-1:shell',
+        agentName: 'Shell 2',
+        runId: 'shell-run-2',
+        status: 'running',
+        workspaceId: 'ws-1',
+      })
+    })
+
+    expect(result.current.optimisticRunsByWorkspaceId['ws-1']?.map((run) => run.run_id)).toEqual([
+      'shell-run-1',
+      'shell-run-2',
+    ])
+    expect(result.current.terminalRuns.map((run) => run.run_id)).toEqual([
+      'shell-run-1',
+      'shell-run-2',
+    ])
+  })
+
+  test('forgets an optimistic workspace shell run by run id', () => {
+    const { result } = renderHook(() => useOptimisticTerminalRuns('ws-1', []))
+
+    act(() => {
+      result.current.recordOptimisticRun({
+        agentId: 'ws-1:shell',
+        agentName: 'Shell 1',
+        runId: 'shell-run-1',
+        workspaceId: 'ws-1',
+      })
+      result.current.forgetOptimisticRun('ws-1', 'shell-run-1')
+    })
+
+    expect(result.current.optimisticRunsByWorkspaceId['ws-1']).toEqual([])
+    expect(result.current.terminalRuns).toEqual([])
   })
 })

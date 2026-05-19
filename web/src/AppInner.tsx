@@ -140,6 +140,7 @@ export const AppInner = () => {
             onDeleteWorkspace={deleteWorkspace}
             onExitDemo={exitDemo}
             onRequestAddWorkspace={triggerAddDialog}
+            onShellRunClosed={terms.forgetOptimisticRun}
             onShellRunStarted={(workspaceId, run) =>
               terms.recordOptimisticRun({
                 agentId: run.agent_id,

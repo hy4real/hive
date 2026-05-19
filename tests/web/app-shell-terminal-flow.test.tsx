@@ -60,21 +60,24 @@ let cleanupServer: (() => Promise<void>) | undefined
 let baseUrl = ''
 let cookie = ''
 let delayShellDeletes = false
+let delayShellStarts = false
 let releaseDelayedDelete: (() => void) | undefined
+let releaseDelayedShellStart: (() => void) | undefined
 let shellStarts: TerminalRunSummary[] = []
 let workspacePath = ''
 
-const createWorkspace = async () => {
+const createWorkspace = async (name = 'Alpha', path = workspacePath) => {
   const response = await nativeFetch(`${baseUrl}/api/workspaces`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', cookie },
     body: JSON.stringify({
       autostart_orchestrator: false,
-      name: 'Alpha',
-      path: workspacePath,
+      name,
+      path,
     }),
   })
   expect(response.status).toBe(201)
+  return (await response.json()) as { id: string; name: string; path: string }
 }
 
 const fetchThroughServer = async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -86,6 +89,22 @@ const fetchThroughServer = async (input: RequestInfo | URL, init?: RequestInit) 
   const headers = new Headers(init?.headers)
   headers.set('cookie', cookie)
 
+  const forward = async () => {
+    const response = await nativeFetch(url, { ...init, headers })
+    if (method === 'POST' && parsed.pathname.endsWith('/shell/start')) {
+      shellStarts.push((await response.clone().json()) as TerminalRunSummary)
+    }
+    return response
+  }
+
+  if (delayShellStarts && method === 'POST' && parsed.pathname.endsWith('/shell/start')) {
+    return new Promise<Response>((resolve, reject) => {
+      releaseDelayedShellStart = () => {
+        forward().then(resolve, reject)
+      }
+    })
+  }
+
   if (
     delayShellDeletes &&
     method === 'DELETE' &&
@@ -93,16 +112,12 @@ const fetchThroughServer = async (input: RequestInfo | URL, init?: RequestInit) 
   ) {
     return new Promise<Response>((resolve, reject) => {
       releaseDelayedDelete = () => {
-        nativeFetch(url, { ...init, headers }).then(resolve, reject)
+        forward().then(resolve, reject)
       }
     })
   }
 
-  const response = await nativeFetch(url, { ...init, headers })
-  if (method === 'POST' && parsed.pathname.endsWith('/shell/start')) {
-    shellStarts.push((await response.clone().json()) as TerminalRunSummary)
-  }
-  return response
+  return forward()
 }
 
 beforeEach(async () => {
@@ -122,7 +137,9 @@ beforeEach(async () => {
   await createWorkspace()
 
   delayShellDeletes = false
+  delayShellStarts = false
   releaseDelayedDelete = undefined
+  releaseDelayedShellStart = undefined
   shellStarts = []
   vi.stubGlobal('fetch', fetchThroughServer)
   vi.stubGlobal(
@@ -152,6 +169,17 @@ const waitForShellSlot = async (runId: string) => {
   await waitFor(() => {
     expect(screen.getByTestId(`terminal-panel-slot-shell-${runId}`)).toBeInTheDocument()
   })
+}
+
+const getWorkspaceRow = async (name: string) => {
+  let row: HTMLElement | undefined
+  await waitFor(() => {
+    row = screen
+      .getAllByRole('button', { name })
+      .find((button) => button.classList.contains('ws-row'))
+    expect(row).toBeDefined()
+  })
+  return row as HTMLElement
 }
 
 describe('app shell terminal flow with real server', () => {
@@ -193,6 +221,71 @@ describe('app shell terminal flow with real server', () => {
 
     expect(shellStarts[1]?.agent_name).toBe('Shell 1')
     expect(shellStarts[1]?.run_id).not.toBe(firstRunId)
+    await waitForShellSlot(shellStarts[1]?.run_id ?? '')
+  }, 10000)
+
+  test('waits for a closing shell before the bottom-panel plus starts another shell', async () => {
+    delayShellDeletes = true
+    render(<App />)
+
+    fireEvent.click(await screen.findByTestId('open-workspace-shell'))
+    await waitFor(() => expect(shellStarts).toHaveLength(1))
+    await waitForShellSlot(shellStarts[0]?.run_id ?? '')
+
+    fireEvent.click(screen.getByTestId('terminal-tab-new-shell'))
+    await waitFor(() => expect(shellStarts).toHaveLength(2))
+    const firstRunId = shellStarts[0]?.run_id ?? ''
+    const secondRunId = shellStarts[1]?.run_id ?? ''
+    expect(shellStarts.map((run) => run.agent_name)).toEqual(['Shell 1', 'Shell 2'])
+    await waitForShellSlot(secondRunId)
+
+    fireEvent.click(screen.getByTestId(`terminal-tab-close-shell:${firstRunId}`))
+    await waitFor(() => expect(releaseDelayedDelete).toBeDefined())
+    fireEvent.click(screen.getByTestId('terminal-tab-new-shell'))
+
+    await new Promise((resolve) => window.setTimeout(resolve, 50))
+    expect(shellStarts).toHaveLength(2)
+
+    releaseDelayedDelete?.()
+    await waitFor(() => expect(shellStarts).toHaveLength(3))
+
+    expect(shellStarts[2]?.agent_name).toBe('Shell 1')
+    expect(shellStarts[2]?.run_id).not.toBe(firstRunId)
+    expect(shellStarts[2]?.run_id).not.toBe(secondRunId)
+    await waitForShellSlot(shellStarts[2]?.run_id ?? '')
+  }, 10000)
+
+  test('keeps a late shell start response out of the workspace selected afterward', async () => {
+    const betaPath = mkdtempSync(join(tmpdir(), 'hive-app-shell-terminal-flow-beta-'))
+    mkdirSync(betaPath, { recursive: true })
+    tempDirs.push(betaPath)
+    const beta = await createWorkspace('Beta', betaPath)
+    delayShellStarts = true
+
+    render(<App />)
+
+    fireEvent.click(await screen.findByTestId('open-workspace-shell'))
+    await waitFor(() => expect(releaseDelayedShellStart).toBeDefined())
+
+    fireEvent.click(await getWorkspaceRow('Beta'))
+    await waitFor(() => {
+      expect(
+        screen
+          .getAllByRole('button', { name: 'Beta' })
+          .find((button) => button.classList.contains('ws-row'))
+      ).toHaveAttribute('aria-current', 'true')
+    })
+
+    releaseDelayedShellStart?.()
+    await waitFor(() => expect(shellStarts).toHaveLength(1))
+    expect(shellStarts[0]?.agent_id).not.toBe(`${beta.id}:shell`)
+    expect(screen.queryByTestId(`terminal-panel-slot-shell-${shellStarts[0]?.run_id}`)).toBeNull()
+
+    delayShellStarts = false
+    fireEvent.click(screen.getByTestId('open-workspace-shell'))
+    await waitFor(() => expect(shellStarts).toHaveLength(2))
+
+    expect(shellStarts[1]?.agent_id).toBe(`${beta.id}:shell`)
     await waitForShellSlot(shellStarts[1]?.run_id ?? '')
   }, 10000)
 })

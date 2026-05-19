@@ -81,6 +81,7 @@ describe('AppWorkspaceContent', () => {
         onDeleteWorkspace={vi.fn()}
         onExitDemo={vi.fn()}
         onRequestAddWorkspace={vi.fn()}
+        onShellRunClosed={vi.fn()}
         onShellRunStarted={onShellRunStarted}
         onTryDemo={vi.fn()}
         optimisticRunsByWorkspaceId={{ [workspace.id]: [shellRun], 'ws-2': [inactiveRun] }}

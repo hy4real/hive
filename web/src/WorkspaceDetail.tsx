@@ -1,23 +1,23 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import type { TeamListItem, WorkspaceSummary } from '../../src/shared/types.js'
 import {
-  closeWorkspaceShell,
   isWorkspaceShellRun,
   type OrchestratorStartResult,
   renameWorker,
-  startWorkspaceShell,
   type TerminalRunSummary,
 } from './api.js'
 import { useI18n } from './i18n.js'
 import { WorkspaceNotifications } from './notifications/WorkspaceNotifications.js'
 import { TerminalBottomPanel } from './terminal/TerminalBottomPanel.js'
 import { useTerminalPanelTabs } from './terminal/useTerminalPanelTabs.js'
+import { useWorkspaceShellLauncher } from './terminal/useWorkspaceShellLauncher.js'
 import { useToast } from './ui/useToast.js'
 import { usePaneSplit } from './usePaneSplit.js'
 import { AddWorkerDialog } from './worker/AddWorkerDialog.js'
 import { OrchestratorPane } from './worker/OrchestratorPane.js'
 import { useOrchestratorPaneState } from './worker/useOrchestratorPaneState.js'
+import type { WorkerActions } from './worker/useWorkerActions.js'
 import { useWorkerComposer } from './worker/useWorkerComposer.js'
 import { WelcomePane } from './worker/WelcomePane.js'
 import { WorkersPane } from './worker/WorkersPane.js'
@@ -29,6 +29,7 @@ type WorkspaceDetailProps = {
   onStartWorker: (workerId: string) => Promise<{ error: string | null; runId: string | null }>
   onOrchestratorResult: (workspaceId: string, result: OrchestratorStartResult) => void
   onRequestAddWorkspace: () => void
+  onShellRunClosed?: (workspaceId: string, runId: string) => void
   onShellRunStarted?: (workspaceId: string, run: TerminalRunSummary) => void
   onTryDemo?: () => void
   welcomeDisabledReason?: string
@@ -46,6 +47,7 @@ export const WorkspaceDetail = ({
   onStartWorker,
   onOrchestratorResult,
   onRequestAddWorkspace,
+  onShellRunClosed,
   onShellRunStarted,
   onTryDemo,
   welcomeDisabledReason,
@@ -58,55 +60,41 @@ export const WorkspaceDetail = ({
   const { t } = useI18n()
   const [composerOpen, setComposerOpen] = useState(false)
   const [deleteWorkerError, setDeleteWorkerError] = useState<string | null>(null)
-  const [shellError, setShellError] = useState<string | null>(null)
-  const [shellRunId, setShellRunId] = useState<string | null>(null)
-  const [shellStarting, setShellStarting] = useState(false)
   const [startWorkerError, setStartWorkerError] = useState<string | null>(null)
   const [startingWorkerId, setStartingWorkerId] = useState<string | null>(null)
-  // Synchronous lock so a fast double-click on the "+" tab button can't fire
-  // startWorkspaceShell twice before React commits `disabled={shellStarting}`.
-  // The server's shell numbering counter would otherwise skip ahead, leaving
-  // the user with shells named "Shell 1" / "Shell 3" / ... .
-  const shellStartInFlightByWorkspaceRef = useRef(new Map<string, number>())
-  const shellStartRequestSeqRef = useRef(0)
-  const closingShellRunIdsByWorkspaceRef = useRef(new Map<string, Set<string>>())
-  const closingShellPromisesByWorkspaceRef = useRef(new Map<string, Map<string, Promise<void>>>())
-  const shellStartAfterCloseByWorkspaceRef = useRef(new Set<string>())
-  const selectedWorkspaceIdRef = useRef<string | null>(workspace?.id ?? null)
   const toast = useToast()
   const composer = useWorkerComposer({ createWorker: onCreateWorker, open: composerOpen })
-
-  const markClosingShellRun = useCallback((workspaceId: string, runId: string) => {
-    const ids = closingShellRunIdsByWorkspaceRef.current.get(workspaceId) ?? new Set<string>()
-    ids.add(runId)
-    closingShellRunIdsByWorkspaceRef.current.set(workspaceId, ids)
-  }, [])
-
-  const trackClosingShellPromise = useCallback(
-    (workspaceId: string, runId: string, promise: Promise<void>) => {
-      const workspacePromises =
-        closingShellPromisesByWorkspaceRef.current.get(workspaceId) ??
-        new Map<string, Promise<void>>()
-      workspacePromises.set(runId, promise)
-      closingShellPromisesByWorkspaceRef.current.set(workspaceId, workspacePromises)
-      void promise
-        .finally(() => {
-          const current = closingShellPromisesByWorkspaceRef.current.get(workspaceId)
-          if (!current) return
-          current.delete(runId)
-          if (current.size === 0) closingShellPromisesByWorkspaceRef.current.delete(workspaceId)
-        })
-        .catch(() => {})
+  const orchestrator = useOrchestratorPaneState({
+    workspaceId: workspace?.id ?? '',
+    terminalRuns,
+    autostartError: orchestratorAutostartError,
+    suppressAutostartRunId: orchestratorAutostartRunId,
+    onClearAutostartError: () => {
+      if (workspace) onOrchestratorResult(workspace.id, { ok: true, error: null, run_id: null })
     },
-    []
-  )
-
-  const unmarkClosingShellRun = useCallback((workspaceId: string, runId: string) => {
-    const ids = closingShellRunIdsByWorkspaceRef.current.get(workspaceId)
-    if (!ids) return
-    ids.delete(runId)
-    if (ids.size === 0) closingShellRunIdsByWorkspaceRef.current.delete(workspaceId)
-  }, [])
+    onAfterStart: (result) => {
+      if (workspace) onOrchestratorResult(workspace.id, result)
+    },
+  })
+  const split = usePaneSplit()
+  const panelTabs = useTerminalPanelTabs({
+    workspaceId: workspace?.id ?? '',
+    workers,
+    terminalRuns,
+  })
+  const shellRuns = workspace
+    ? terminalRuns.filter((run) => isWorkspaceShellRun(run, workspace.id))
+    : []
+  const { closeShellTab, openShell, shellError, shellStarting, startNewShell } =
+    useWorkspaceShellLauncher({
+      onCloseFailed: (message) =>
+        toast.show({ kind: 'error', message: t('shellTerminal.closeFailed', { message }) }),
+      onShellRunClosed,
+      onShellRunStarted,
+      panelTabs,
+      shellRuns,
+      workspaceId: workspace?.id ?? null,
+    })
 
   // Surface composer / delete errors as toasts instead of inline alert bands.
   useEffect(() => {
@@ -129,60 +117,14 @@ export const WorkspaceDetail = ({
     if (shellError) toast.show({ kind: 'error', message: shellError })
   }, [shellError, toast])
 
-  useLayoutEffect(() => {
-    selectedWorkspaceIdRef.current = workspace?.id ?? null
-  }, [workspace?.id])
-
-  useEffect(
-    () => () => {
-      closingShellRunIdsByWorkspaceRef.current.clear()
-      closingShellPromisesByWorkspaceRef.current.clear()
-      shellStartAfterCloseByWorkspaceRef.current.clear()
-    },
-    []
-  )
-
-  useEffect(() => {
-    if (!workspace) return
-    const closingIds = closingShellRunIdsByWorkspaceRef.current.get(workspace.id)
-    if (!closingIds) return
-    const liveShellRunIds = new Set(
-      terminalRuns.filter((run) => isWorkspaceShellRun(run, workspace.id)).map((run) => run.run_id)
-    )
-    for (const runId of Array.from(closingIds)) {
-      if (!liveShellRunIds.has(runId)) unmarkClosingShellRun(workspace.id, runId)
-    }
-  }, [terminalRuns, unmarkClosingShellRun, workspace])
-
   // B2: when the user switches workspace, clear local error state so we don't
   // surface a stale error from the previous workspace as a fresh toast.
   // biome-ignore lint/correctness/useExhaustiveDependencies: effect intentionally fires only on workspace switch
   useEffect(() => {
     setDeleteWorkerError(null)
-    setShellError(null)
-    setShellRunId(null)
-    setShellStarting(false)
     setStartWorkerError(null)
     setStartingWorkerId(null)
   }, [workspace?.id])
-  const orchestrator = useOrchestratorPaneState({
-    workspaceId: workspace?.id ?? '',
-    terminalRuns,
-    autostartError: orchestratorAutostartError,
-    suppressAutostartRunId: orchestratorAutostartRunId,
-    onClearAutostartError: () => {
-      if (workspace) onOrchestratorResult(workspace.id, { ok: true, error: null, run_id: null })
-    },
-    onAfterStart: (result) => {
-      if (workspace) onOrchestratorResult(workspace.id, result)
-    },
-  })
-  const split = usePaneSplit()
-  const panelTabs = useTerminalPanelTabs({
-    workspaceId: workspace?.id ?? '',
-    workers,
-    terminalRuns,
-  })
 
   if (!workspace) {
     const welcomeProps: {
@@ -194,10 +136,6 @@ export const WorkspaceDetail = ({
     if (welcomeDisabledReason) welcomeProps.disabledReason = welcomeDisabledReason
     return <WelcomePane {...welcomeProps} />
   }
-
-  const shellRuns = terminalRuns.filter((run) => isWorkspaceShellRun(run, workspace.id))
-  const activeShellRun = shellRuns.find((run) => run.run_id === shellRunId) ?? shellRuns[0] ?? null
-  const activeShellRunId = activeShellRun?.run_id ?? null
 
   const handleDeleteWorker = (worker: TeamListItem) => {
     setDeleteWorkerError(null)
@@ -237,109 +175,6 @@ export const WorkspaceDetail = ({
     }
   }
 
-  const startShell = () => {
-    if (shellStartInFlightByWorkspaceRef.current.has(workspace.id)) return
-    const requestWorkspaceId = workspace.id
-    const requestSeq = shellStartRequestSeqRef.current + 1
-    shellStartRequestSeqRef.current = requestSeq
-    shellStartInFlightByWorkspaceRef.current.set(requestWorkspaceId, requestSeq)
-    const isSelectedWorkspace = () => selectedWorkspaceIdRef.current === requestWorkspaceId
-    const ownsInFlightMarker = () =>
-      shellStartInFlightByWorkspaceRef.current.get(requestWorkspaceId) === requestSeq
-    setShellError(null)
-    setShellStarting(true)
-    void startWorkspaceShell(requestWorkspaceId)
-      .then((run) => {
-        onShellRunStarted?.(requestWorkspaceId, run)
-        if (!isSelectedWorkspace()) return
-        setShellRunId(run.run_id)
-        panelTabs.openShellTab(run.run_id)
-      })
-      .catch((error) => {
-        if (!isSelectedWorkspace()) return
-        setShellError(error instanceof Error ? error.message : String(error))
-      })
-      .finally(() => {
-        if (ownsInFlightMarker())
-          shellStartInFlightByWorkspaceRef.current.delete(requestWorkspaceId)
-        if (isSelectedWorkspace()) setShellStarting(false)
-      })
-  }
-
-  const startShellAfterClosingRuns = () => {
-    const requestWorkspaceId = workspace.id
-    if (
-      shellStartInFlightByWorkspaceRef.current.has(requestWorkspaceId) ||
-      shellStartAfterCloseByWorkspaceRef.current.has(requestWorkspaceId)
-    ) {
-      return
-    }
-
-    const closingPromises = Array.from(
-      closingShellPromisesByWorkspaceRef.current.get(requestWorkspaceId)?.values() ?? []
-    )
-    if (closingPromises.length === 0) {
-      startShell()
-      return
-    }
-
-    shellStartAfterCloseByWorkspaceRef.current.add(requestWorkspaceId)
-    setShellError(null)
-    setShellStarting(true)
-    void Promise.allSettled(closingPromises)
-      .then((results) => {
-        if (results.some((result) => result.status === 'rejected')) return
-        if (selectedWorkspaceIdRef.current !== requestWorkspaceId) return
-        if (shellStartInFlightByWorkspaceRef.current.has(requestWorkspaceId)) return
-        startShell()
-      })
-      .finally(() => {
-        shellStartAfterCloseByWorkspaceRef.current.delete(requestWorkspaceId)
-        if (
-          selectedWorkspaceIdRef.current === requestWorkspaceId &&
-          !shellStartInFlightByWorkspaceRef.current.has(requestWorkspaceId)
-        ) {
-          setShellStarting(false)
-        }
-      })
-  }
-
-  const openShell = () => {
-    if (shellStartInFlightByWorkspaceRef.current.has(workspace.id) || shellStarting) return
-    const existingShellTab = panelTabs.tabs.find((tab) => tab.kind === 'shell')
-    if (existingShellTab) {
-      panelTabs.setActive(existingShellTab.id)
-      return
-    }
-    const closingShellRunIds =
-      closingShellRunIdsByWorkspaceRef.current.get(workspace.id) ?? new Set<string>()
-    const reusableShellRun = shellRuns.find((run) => !closingShellRunIds.has(run.run_id))
-    if (reusableShellRun) {
-      setShellRunId(reusableShellRun.run_id)
-      panelTabs.openShellTab(reusableShellRun.run_id)
-      return
-    }
-    if (closingShellRunIds.size > 0) {
-      startShellAfterClosingRuns()
-      return
-    }
-    startShell()
-  }
-
-  const closeShellTab = (runId: string) => {
-    const fallbackRun = shellRuns.find((run) => run.run_id !== runId) ?? null
-    if (activeShellRunId === runId) setShellRunId(fallbackRun?.run_id ?? null)
-    markClosingShellRun(workspace.id, runId)
-    const closePromise = closeWorkspaceShell(workspace.id, runId).catch((error) => {
-      unmarkClosingShellRun(workspace.id, runId)
-      const message = error instanceof Error ? error.message : String(error)
-      toast.show({ kind: 'error', message: t('shellTerminal.closeFailed', { message }) })
-      throw error
-    })
-    trackClosingShellPromise(workspace.id, runId, closePromise)
-    void closePromise.catch(() => {})
-  }
-
   const orchWidth = `${(split.orchPct * 100).toFixed(2)}%`
 
   return (
@@ -355,7 +190,6 @@ export const WorkspaceDetail = ({
             state={orchestrator.state}
             onStop={orchestrator.stop}
             onRemoveWorkspace={() => {
-              if (!workspace) return
               void onDeleteWorkspace(workspace).catch((error: unknown) => {
                 const message = error instanceof Error ? error.message : String(error)
                 toast.show({ kind: 'error', message: `Delete failed: ${message}` })
@@ -399,12 +233,11 @@ export const WorkspaceDetail = ({
             onSelect={panelTabs.setActive}
             onClose={(tabId) => {
               if (tabId.startsWith('shell:')) {
-                const runId = tabId.slice('shell:'.length)
-                closeShellTab(runId)
+                closeShellTab(tabId.slice('shell:'.length))
               }
               panelTabs.closeTab(tabId)
             }}
-            onNewShell={startShell}
+            onNewShell={startNewShell}
             newShellPending={shellStarting}
             onStartWorker={(workerId) => {
               const worker = workers.find((w) => w.id === workerId)
