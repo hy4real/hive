@@ -10,6 +10,7 @@ type TerminalBottomPanelProps = {
   activeId: string | null
   onSelect: (tabId: string) => void
   onClose: (tabId: string) => void
+  onClosePanel: () => void
   onNewShell: () => void
   newShellPending: boolean
   onStartWorker: (workerId: string) => void
@@ -33,6 +34,7 @@ export const TerminalBottomPanel = ({
   activeId,
   onSelect,
   onClose,
+  onClosePanel,
   onNewShell,
   newShellPending,
   onStartWorker,
@@ -84,6 +86,7 @@ export const TerminalBottomPanel = ({
         activeId={active?.id ?? null}
         onSelect={onSelect}
         onClose={onClose}
+        onClosePanel={onClosePanel}
         onNewShell={onNewShell}
         newShellPending={newShellPending}
       />

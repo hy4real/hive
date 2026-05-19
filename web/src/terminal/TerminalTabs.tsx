@@ -10,6 +10,7 @@ type TerminalTabsProps = {
   activeId: string | null
   onSelect: (tabId: string) => void
   onClose: (tabId: string) => void
+  onClosePanel: () => void
   onNewShell: () => void
   newShellPending: boolean
 }
@@ -31,6 +32,7 @@ export const TerminalTabs = ({
   activeId,
   onSelect,
   onClose,
+  onClosePanel,
   onNewShell,
   newShellPending,
 }: TerminalTabsProps) => {
@@ -103,7 +105,19 @@ export const TerminalTabs = ({
           </div>
         )
       })}
-      <div className="flex flex-1 items-center justify-end px-2">
+      <div className="flex flex-1 items-center justify-end gap-1 px-2">
+        <Tooltip label={t('terminalPanel.closePanel')}>
+          <button
+            type="button"
+            aria-label={t('terminalPanel.closePanel')}
+            data-testid="terminal-panel-close"
+            onClick={onClosePanel}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded border text-sec transition hover:text-pri disabled:opacity-50"
+            style={{ borderColor: 'var(--border)', background: 'var(--bg-1)' }}
+          >
+            <X size={12} aria-hidden />
+          </button>
+        </Tooltip>
         <Tooltip label={t('terminalPanel.newShell')}>
           <button
             type="button"

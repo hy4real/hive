@@ -65,6 +65,7 @@ export const WorkspaceDetail = ({
   const [deleteWorkerError, setDeleteWorkerError] = useState<string | null>(null)
   const [startWorkerError, setStartWorkerError] = useState<string | null>(null)
   const [startingWorkerId, setStartingWorkerId] = useState<string | null>(null)
+  const [terminalPanelHidden, setTerminalPanelHidden] = useState(false)
   const toast = useToast()
   const composer = useWorkerComposer({ createWorker: onCreateWorker, open: composerOpen })
   const orchestrator = useOrchestratorPaneState({
@@ -134,6 +135,7 @@ export const WorkspaceDetail = ({
     setDeleteWorkerError(null)
     setStartWorkerError(null)
     setStartingWorkerId(null)
+    setTerminalPanelHidden(false)
   }, [workspace?.id])
 
   if (!workspace) {
@@ -190,6 +192,14 @@ export const WorkspaceDetail = ({
   }
 
   const orchWidth = `${(split.orchPct * 100).toFixed(2)}%`
+  const openShellTerminal = () => {
+    setTerminalPanelHidden(false)
+    openShell()
+  }
+  const startNewShellFromPanel = () => {
+    setTerminalPanelHidden(false)
+    startNewShell()
+  }
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col" style={{ background: 'var(--bg-2)' }}>
@@ -233,7 +243,7 @@ export const WorkspaceDetail = ({
           <WorkersPane
             onAddWorkerClick={() => setComposerOpen(true)}
             onDeleteWorker={handleDeleteWorker}
-            onOpenShellTerminal={openShell}
+            onOpenShellTerminal={openShellTerminal}
             onOpenWorker={(worker) => setActiveWorkerId(worker.id)}
             onRenameWorker={handleRenameWorker}
             onStartWorker={handleStartWorker}
@@ -241,25 +251,28 @@ export const WorkspaceDetail = ({
             terminalRuns={terminalRuns}
             workers={workers}
           />
-          <TerminalBottomPanel
-            tabs={shellPanelTabs}
-            activeId={panelTabs.activeId}
-            scopeKey={workspace.id}
-            onSelect={panelTabs.setActive}
-            onClose={(tabId) => {
-              if (tabId.startsWith('shell:')) {
-                closeShellTab(tabId.slice('shell:'.length))
-              }
-              panelTabs.closeTab(tabId)
-            }}
-            onNewShell={startNewShell}
-            newShellPending={shellStarting}
-            onStartWorker={(workerId) => {
-              const worker = workers.find((w) => w.id === workerId)
-              if (worker) handleStartWorker(worker)
-            }}
-            startingWorkerId={startingWorkerId}
-          />
+          {terminalPanelHidden ? null : (
+            <TerminalBottomPanel
+              tabs={shellPanelTabs}
+              activeId={panelTabs.activeId}
+              scopeKey={workspace.id}
+              onSelect={panelTabs.setActive}
+              onClose={(tabId) => {
+                if (tabId.startsWith('shell:')) {
+                  closeShellTab(tabId.slice('shell:'.length))
+                }
+                panelTabs.closeTab(tabId)
+              }}
+              onClosePanel={() => setTerminalPanelHidden(true)}
+              onNewShell={startNewShellFromPanel}
+              newShellPending={shellStarting}
+              onStartWorker={(workerId) => {
+                const worker = workers.find((w) => w.id === workerId)
+                if (worker) handleStartWorker(worker)
+              }}
+              startingWorkerId={startingWorkerId}
+            />
+          )}
         </div>
       </div>
       {activeWorker ? (

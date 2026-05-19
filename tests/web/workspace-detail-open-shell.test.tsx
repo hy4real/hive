@@ -181,6 +181,37 @@ describe('WorkspaceDetail shell terminal button', () => {
     expect(startWorkspaceShell).not.toHaveBeenCalled()
   })
 
+  test('panel close hides the shell panel without stopping the shell and Terminal restores it', async () => {
+    const shell = shellRun()
+    window.localStorage.setItem(
+      `hive.terminal-panel.tabs.${workspace.id}`,
+      JSON.stringify([`shell:${shell.run_id}`])
+    )
+    window.localStorage.setItem(
+      `hive.terminal-panel.active.${workspace.id}`,
+      `shell:${shell.run_id}`
+    )
+
+    renderWorkspaceDetail({ terminalRuns: [shell] })
+    const panel = await screen.findByTestId('terminal-bottom-panel')
+    expect(
+      within(panel).getByTestId(`terminal-panel-slot-shell-${shell.run_id}`)
+    ).toBeInTheDocument()
+
+    fireEvent.click(within(panel).getByTestId('terminal-panel-close'))
+
+    expect(screen.queryByTestId('terminal-bottom-panel')).not.toBeInTheDocument()
+    expect(closeWorkspaceShell).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByTestId('open-workspace-shell'))
+
+    const reopenedPanel = await screen.findByTestId('terminal-bottom-panel')
+    expect(
+      within(reopenedPanel).getByTestId(`terminal-panel-slot-shell-${shell.run_id}`)
+    ).toBeInTheDocument()
+    expect(startWorkspaceShell).not.toHaveBeenCalled()
+  })
+
   test('waits for a locally closing shell run before starting a replacement', async () => {
     const closingRun = shellRun()
     const run = shellRun('shell-run-2')

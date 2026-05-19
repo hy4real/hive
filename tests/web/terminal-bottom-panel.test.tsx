@@ -37,6 +37,7 @@ describe('TerminalBottomPanel', () => {
         activeId="worker:w1"
         onSelect={vi.fn()}
         onClose={vi.fn()}
+        onClosePanel={vi.fn()}
         onNewShell={vi.fn()}
         newShellPending={false}
         onStartWorker={vi.fn()}
@@ -55,6 +56,7 @@ describe('TerminalBottomPanel', () => {
         activeId="shell:run-s"
         onSelect={vi.fn()}
         onClose={vi.fn()}
+        onClosePanel={vi.fn()}
         onNewShell={vi.fn()}
         newShellPending={false}
         onStartWorker={vi.fn()}
@@ -66,6 +68,27 @@ describe('TerminalBottomPanel', () => {
     expect(slot?.getAttribute('data-pty-slot')).toBe('shell')
   })
 
+  test('panel close button closes the whole terminal panel, not the active tab', () => {
+    const onClose = vi.fn()
+    const onClosePanel = vi.fn()
+    render(
+      <TerminalBottomPanel
+        tabs={[shellTab]}
+        activeId="shell:run-s"
+        onSelect={vi.fn()}
+        onClose={onClose}
+        onClosePanel={onClosePanel}
+        onNewShell={vi.fn()}
+        newShellPending={false}
+        onStartWorker={vi.fn()}
+        startingWorkerId={null}
+      />
+    )
+    fireEvent.click(screen.getByTestId('terminal-panel-close'))
+    expect(onClosePanel).toHaveBeenCalledTimes(1)
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
   test('shows the stopped-worker empty state when the active worker tab has no runId', () => {
     const stoppedWorkerTab: TerminalTab = { ...workerTab, runId: null }
     render(
@@ -74,6 +97,7 @@ describe('TerminalBottomPanel', () => {
         activeId="worker:w1"
         onSelect={vi.fn()}
         onClose={vi.fn()}
+        onClosePanel={vi.fn()}
         onNewShell={vi.fn()}
         newShellPending={false}
         onStartWorker={vi.fn()}
@@ -93,6 +117,7 @@ describe('TerminalBottomPanel', () => {
         activeId="worker:w1"
         onSelect={vi.fn()}
         onClose={vi.fn()}
+        onClosePanel={vi.fn()}
         onNewShell={vi.fn()}
         newShellPending={false}
         onStartWorker={onStartWorker}
@@ -110,6 +135,7 @@ describe('TerminalBottomPanel', () => {
         activeId={null}
         onSelect={vi.fn()}
         onClose={vi.fn()}
+        onClosePanel={vi.fn()}
         onNewShell={vi.fn()}
         newShellPending={false}
         onStartWorker={vi.fn()}
@@ -126,6 +152,7 @@ describe('TerminalBottomPanel', () => {
         activeId="worker:w1"
         onSelect={vi.fn()}
         onClose={vi.fn()}
+        onClosePanel={vi.fn()}
         onNewShell={vi.fn()}
         newShellPending={false}
         onStartWorker={vi.fn()}
@@ -144,6 +171,7 @@ describe('TerminalBottomPanel', () => {
         activeId="worker:w1"
         onSelect={vi.fn()}
         onClose={vi.fn()}
+        onClosePanel={vi.fn()}
         onNewShell={vi.fn()}
         newShellPending={false}
         onStartWorker={vi.fn()}
@@ -162,6 +190,7 @@ describe('TerminalBottomPanel', () => {
         activeId="worker:w1"
         onSelect={vi.fn()}
         onClose={onClose}
+        onClosePanel={vi.fn()}
         onNewShell={vi.fn()}
         newShellPending={false}
         onStartWorker={vi.fn()}
