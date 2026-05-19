@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import type { TeamListItem, WorkspaceSummary } from '../../src/shared/types.js'
 import {
@@ -68,10 +68,6 @@ export const WorkspaceDetail = ({
   const shellStartInFlightRef = useRef(false)
   const shellStartRequestSeqRef = useRef(0)
   const shellStartWorkspaceIdRef = useRef<string | null>(workspace?.id ?? null)
-  if (shellStartWorkspaceIdRef.current !== (workspace?.id ?? null)) {
-    shellStartWorkspaceIdRef.current = workspace?.id ?? null
-    shellStartRequestSeqRef.current += 1
-  }
   const toast = useToast()
   const composer = useWorkerComposer({ createWorker: onCreateWorker, open: composerOpen })
 
@@ -95,6 +91,14 @@ export const WorkspaceDetail = ({
   useEffect(() => {
     if (shellError) toast.show({ kind: 'error', message: shellError })
   }, [shellError, toast])
+
+  useLayoutEffect(() => {
+    const workspaceId = workspace?.id ?? null
+    if (shellStartWorkspaceIdRef.current === workspaceId) return
+    shellStartWorkspaceIdRef.current = workspaceId
+    shellStartRequestSeqRef.current += 1
+    shellStartInFlightRef.current = false
+  }, [workspace?.id])
 
   // B2: when the user switches workspace, clear local error state so we don't
   // surface a stale error from the previous workspace as a fresh toast.
