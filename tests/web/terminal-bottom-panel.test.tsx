@@ -153,4 +153,23 @@ describe('TerminalBottomPanel', () => {
     const handle = screen.getByTestId('terminal-panel-resize-handle')
     expect(() => fireEvent.pointerDown(handle, { clientY: 400 })).not.toThrow()
   })
+
+  test('Cmd+W on the panel container closes the active tab', () => {
+    const onClose = vi.fn()
+    render(
+      <TerminalBottomPanel
+        tabs={[workerTab]}
+        activeId="worker:w1"
+        onSelect={vi.fn()}
+        onClose={onClose}
+        onNewShell={vi.fn()}
+        newShellPending={false}
+        onStartWorker={vi.fn()}
+        startingWorkerId={null}
+      />
+    )
+    const panel = screen.getByTestId('terminal-bottom-panel')
+    fireEvent.keyDown(panel, { key: 'w', metaKey: true })
+    expect(onClose).toHaveBeenCalledWith('worker:w1')
+  })
 })

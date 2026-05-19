@@ -43,6 +43,7 @@ export const TerminalBottomPanel = ({
   if (tabs.length === 0) return null
   const active = findTab(tabs, activeId) ?? tabs[0] ?? null
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: panel container hosts a Cmd+W keyboard shortcut for closing the active terminal tab
     <div
       data-testid="terminal-bottom-panel"
       className="relative flex shrink-0 flex-col"
@@ -50,6 +51,19 @@ export const TerminalBottomPanel = ({
         height: resize.height,
         background: 'var(--bg-1)',
         borderTop: '1px solid var(--border)',
+      }}
+      tabIndex={-1}
+      onKeyDown={(event) => {
+        if (
+          (event.metaKey || event.ctrlKey) &&
+          !event.altKey &&
+          !event.shiftKey &&
+          event.key.toLowerCase() === 'w' &&
+          activeId
+        ) {
+          event.preventDefault()
+          onClose(activeId)
+        }
       }}
     >
       {/* biome-ignore lint/a11y/useSemanticElements: separator role on a div is the canonical resize handle */}
