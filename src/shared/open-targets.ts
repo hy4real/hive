@@ -9,35 +9,25 @@ export type OpenTargetId =
   | 'vscode'
   | 'vscode-insiders'
   | 'cursor'
-  | 'windsurf'
   | 'finder'
   | 'terminal'
-  | 'iterm2'
   | 'ghostty'
-  | 'intellijidea'
   | 'zed'
 
 export type OpenTargetPlatform = 'mac' | 'windows' | 'linux' | 'other'
 
 // Note: there is no `cursor-insiders` here. Cursor stopped shipping a separate
 // Nightly bundle / `cursor-nightly` binary in March 2024; the pre-release
-// channel is now an in-app toggle on the regular Cursor.app, so an "Insiders"
-// menu entry would 100% fail with `app-not-installed` on every platform.
+// channel is now an in-app toggle on the regular Cursor.app.
+//
+// IntelliJ IDEA, Windsurf, and iTerm2 were intentionally dropped after 1.3.0:
+// IntelliJ users typically launch from JetBrains Toolbox rather than a folder
+// picker; Windsurf overlaps with Cursor/VS Code; iTerm2 overlaps with the
+// built-in macOS Terminal entry.
 export const OPEN_TARGET_IDS_BY_PLATFORM: Record<OpenTargetPlatform, readonly OpenTargetId[]> = {
-  mac: [
-    'vscode',
-    'vscode-insiders',
-    'cursor',
-    'windsurf',
-    'finder',
-    'terminal',
-    'iterm2',
-    'ghostty',
-    'intellijidea',
-    'zed',
-  ],
-  windows: ['vscode', 'vscode-insiders', 'cursor', 'windsurf', 'finder', 'zed'],
-  linux: ['vscode', 'vscode-insiders', 'cursor', 'windsurf', 'finder', 'zed'],
+  mac: ['vscode', 'vscode-insiders', 'cursor', 'finder', 'terminal', 'ghostty', 'zed'],
+  windows: ['vscode', 'vscode-insiders', 'cursor', 'finder', 'zed'],
+  linux: ['vscode', 'vscode-insiders', 'cursor', 'finder', 'zed'],
   other: ['vscode', 'vscode-insiders', 'finder'],
 }
 

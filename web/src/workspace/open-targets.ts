@@ -7,15 +7,12 @@ import {
   type OpenTargetPlatform,
 } from '../../../src/shared/open-targets.js'
 import cursorIcon from '../assets/open-targets/cursor.svg'
-import finderIcon from '../assets/open-targets/finder.svg'
-import ghosttyIcon from '../assets/open-targets/ghostty.svg'
-import intellijIcon from '../assets/open-targets/intellijidea.svg'
-import iterm2Icon from '../assets/open-targets/iterm2.svg'
+import finderIcon from '../assets/open-targets/finder.jpeg'
+import ghosttyIcon from '../assets/open-targets/ghostty.png'
 import terminalIcon from '../assets/open-targets/terminal.svg'
 import vscodeIcon from '../assets/open-targets/vscode.svg'
 import vscodeInsidersIcon from '../assets/open-targets/vscode-insiders.svg'
-import windsurfIcon from '../assets/open-targets/windsurf.svg'
-import zedIcon from '../assets/open-targets/zed.svg'
+import zedIcon from '../assets/open-targets/zed.png'
 
 export type { OpenTargetId, OpenTargetPlatform }
 export { getDefaultOpenTargetIdForPlatform, isOpenTargetSupported, OPEN_TARGET_IDS_BY_PLATFORM }
@@ -31,14 +28,11 @@ export interface OpenTargetOption {
     | 'openWorkspace.target.vscode'
     | 'openWorkspace.target.vscodeInsiders'
     | 'openWorkspace.target.cursor'
-    | 'openWorkspace.target.windsurf'
     | 'openWorkspace.target.finder.mac'
     | 'openWorkspace.target.finder.windows'
     | 'openWorkspace.target.finder.linux'
     | 'openWorkspace.target.terminal'
-    | 'openWorkspace.target.iterm2'
     | 'openWorkspace.target.ghostty'
-    | 'openWorkspace.target.intellijidea'
     | 'openWorkspace.target.zed'
   iconSrc: string
 }
@@ -57,13 +51,10 @@ const TARGET_DATA: Record<OpenTargetId, Omit<OpenTargetOption, 'id'>> = {
     iconSrc: vscodeInsidersIcon,
   },
   cursor: { labelKey: 'openWorkspace.target.cursor', iconSrc: cursorIcon },
-  windsurf: { labelKey: 'openWorkspace.target.windsurf', iconSrc: windsurfIcon },
   // The actual labelKey is resolved per platform in getOpenTargetOption.
   finder: { labelKey: 'openWorkspace.target.finder.mac', iconSrc: finderIcon },
   terminal: { labelKey: 'openWorkspace.target.terminal', iconSrc: terminalIcon },
-  iterm2: { labelKey: 'openWorkspace.target.iterm2', iconSrc: iterm2Icon },
   ghostty: { labelKey: 'openWorkspace.target.ghostty', iconSrc: ghosttyIcon },
-  intellijidea: { labelKey: 'openWorkspace.target.intellijidea', iconSrc: intellijIcon },
   zed: { labelKey: 'openWorkspace.target.zed', iconSrc: zedIcon },
 }
 
@@ -123,8 +114,12 @@ export const loadPersistedOpenTargetId = (platform: OpenTargetPlatform): OpenTar
   if (typeof window === 'undefined') return fallback
   const raw = readPreferredOpenTargetRaw()
   if (!raw) return fallback
-  // Tolerate historical typos that shipped in the kanban port we forked from.
-  const normalized = raw === 'ghostie' ? 'ghostty' : raw === 'intellij_idea' ? 'intellijidea' : raw
+  // Tolerate the historical `ghostie` typo that shipped in the kanban port we
+  // forked from. Removed-target preferences (`intellij_idea`, `intellijidea`,
+  // `iterm2`, `windsurf`) intentionally fall through `isOpenTargetId` and land
+  // on the platform default rather than being silently remapped to a
+  // surviving target — stale UI selections aren't worth a surprise launch.
+  const normalized = raw === 'ghostie' ? 'ghostty' : raw
   if (isOpenTargetId(normalized) && isOpenTargetSupported(normalized, platform)) {
     return normalized
   }

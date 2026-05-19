@@ -179,14 +179,17 @@ describe('OpenWorkspaceButton', () => {
     expect(checked?.getAttribute('data-testid')).toBe('topbar-open-workspace-option-ghostty')
   })
 
-  test('legacy intellij_idea key is normalized to intellijidea on load (mac platform)', () => {
+  test('stale intellij_idea preference falls back to the platform default (target removed)', () => {
+    // IntelliJ IDEA was dropped from the supported targets after 1.3.0, so a
+    // previously-saved `intellij_idea` (or `intellijidea`) preference now
+    // resolves to the mac default (finder) rather than ghosting the open click.
     vi.stubGlobal('navigator', {
       userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537',
       platform: 'MacIntel',
       language: 'en-US',
     })
     window.localStorage.setItem(PREFERRED_OPEN_TARGET_STORAGE_KEY, 'intellij_idea')
-    stubOpenFetch(() => json({ ok: true, effective_target_id: 'intellijidea' }, 200))
+    stubOpenFetch(() => json({ ok: true, effective_target_id: 'finder' }, 200))
 
     renderHarness(<OpenWorkspaceButton workspace={mkWorkspace()} />)
 
@@ -194,7 +197,7 @@ describe('OpenWorkspaceButton', () => {
     const checked = screen
       .getByTestId('topbar-open-workspace-menu')
       .querySelector('[aria-checked="true"]')
-    expect(checked?.getAttribute('data-testid')).toBe('topbar-open-workspace-option-intellijidea')
+    expect(checked?.getAttribute('data-testid')).toBe('topbar-open-workspace-option-finder')
   })
 
   test('localStorage write failures still update the in-memory selection', () => {

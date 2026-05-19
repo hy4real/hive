@@ -24,15 +24,23 @@ describe('isOpenTargetId', () => {
     expect(isOpenTargetId('vscode')).toBe(true)
     expect(isOpenTargetId('vscode-insiders')).toBe(true)
     expect(isOpenTargetId('cursor')).toBe(true)
-    expect(isOpenTargetId('iterm2')).toBe(true)
+    expect(isOpenTargetId('finder')).toBe(true)
+    expect(isOpenTargetId('terminal')).toBe(true)
+    expect(isOpenTargetId('ghostty')).toBe(true)
     expect(isOpenTargetId('zed')).toBe(true)
+
+    // Removed after 1.3.0 — IntelliJ users typically launch from JetBrains
+    // Toolbox, Windsurf overlaps with Cursor, iTerm2 overlaps with Terminal.
+    expect(isOpenTargetId('intellijidea')).toBe(false)
+    expect(isOpenTargetId('windsurf')).toBe(false)
+    expect(isOpenTargetId('iterm2')).toBe(false)
 
     // cursor-insiders was removed before shipping 1.2.0: the underlying
     // `Cursor Nightly` bundle / `cursor-nightly` binary were discontinued
     // in March 2024, so the option would have always returned app-not-installed.
     expect(isOpenTargetId('cursor-insiders')).toBe(false)
-    expect(isOpenTargetId('warp')).toBe(false) // never shipped in 1.2.0
-    expect(isOpenTargetId('xcode')).toBe(false) // never shipped in 1.2.0
+    expect(isOpenTargetId('warp')).toBe(false)
+    expect(isOpenTargetId('xcode')).toBe(false)
     expect(isOpenTargetId('sublime')).toBe(false)
     expect(isOpenTargetId('')).toBe(false)
     expect(isOpenTargetId(123)).toBe(false)
@@ -57,14 +65,18 @@ describe('getEffectiveOpenTargetId', () => {
   })
 
   test('platform-unsupported target falls back to finder, not vscode', () => {
-    // iterm2 / ghostty are mac-only — Windows/Linux should fall back to finder
-    expect(getEffectiveOpenTargetId('iterm2', 'windows')).toBe('finder')
+    // ghostty / terminal are mac-only — Windows/Linux should fall back to
+    // finder rather than vscode.
     expect(getEffectiveOpenTargetId('ghostty', 'linux')).toBe('finder')
-    expect(getEffectiveOpenTargetId('intellijidea', 'windows')).toBe('finder')
+    expect(getEffectiveOpenTargetId('ghostty', 'windows')).toBe('finder')
+    expect(getEffectiveOpenTargetId('terminal', 'linux')).toBe('finder')
   })
 
   test('unsupported on "other" platform also falls back', () => {
-    expect(getEffectiveOpenTargetId('iterm2', 'other')).toBe('vscode')
+    // 'other' platforms only get vscode / vscode-insiders / finder; anything
+    // else routes to vscode (the default for non-mac/win/linux).
+    expect(getEffectiveOpenTargetId('ghostty', 'other')).toBe('vscode')
+    expect(getEffectiveOpenTargetId('cursor', 'other')).toBe('vscode')
   })
 })
 
@@ -121,23 +133,10 @@ describe('buildOpenAttempts — mac', () => {
     expect(first).toEqual({ command: 'open', args: [path] })
   })
 
-  test('iterm2 uses bundle name `iTerm` with no `iTerm2` fallback', () => {
-    const attempts = buildOpenAttempts('iterm2', path, 'mac')
-    expect(attempts).toHaveLength(1)
-    expect(attempts[0]?.args).toEqual(['-a', 'iTerm', path])
-  })
-
   test('ghostty uses bundle name `Ghostty` with no `Ghostie` legacy fallback', () => {
     const attempts = buildOpenAttempts('ghostty', path, 'mac')
     expect(attempts).toHaveLength(1)
     expect(attempts[0]?.args).toEqual(['-a', 'Ghostty', path])
-  })
-
-  test('intellijidea has CE fallback for pre-2025.3 installs', () => {
-    const attempts = buildOpenAttempts('intellijidea', path, 'mac')
-    expect(attempts).toHaveLength(2)
-    expect(attempts[0]?.args).toEqual(['-a', 'IntelliJ IDEA', path])
-    expect(attempts[1]?.args).toEqual(['-a', 'IntelliJ IDEA CE', path])
   })
 
   test('every supported mac target produces at least one attempt', () => {
@@ -145,12 +144,9 @@ describe('buildOpenAttempts — mac', () => {
       'vscode',
       'vscode-insiders',
       'cursor',
-      'windsurf',
       'finder',
       'terminal',
-      'iterm2',
       'ghostty',
-      'intellijidea',
       'zed',
     ] as const
     for (const id of mac) {
@@ -188,8 +184,10 @@ describe('buildOpenAttempts — linux', () => {
   })
 
   test('mac-only targets fall back to xdg-open via effective-target resolution', () => {
-    // iterm2 -> finder -> xdg-open
-    expect(buildOpenAttempts('iterm2', path, 'linux')[0]?.command).toBe('xdg-open')
+    // ghostty -> finder (linux fallback) -> xdg-open
+    expect(buildOpenAttempts('ghostty', path, 'linux')[0]?.command).toBe('xdg-open')
+    // terminal -> finder -> xdg-open
+    expect(buildOpenAttempts('terminal', path, 'linux')[0]?.command).toBe('xdg-open')
   })
 })
 
@@ -236,30 +234,6 @@ describe('openWorkspace — happy path', () => {
       command: 'open',
       args: ['-a', 'Visual Studio Code', '/Users/admin/code/hive'],
     })
-  })
-
-  test('falls back to the second attempt when the first exits non-zero', async () => {
-    const calls: OpenAttempt[] = []
-    const runCommand: RunOpenCommand = async (command, args) => {
-      calls.push({ command, args })
-      // First attempt: IntelliJ IDEA bundle missing → app-not-installed.
-      // Second attempt: IntelliJ IDEA CE → succeeds.
-      if (calls.length === 1) {
-        return {
-          ...fakeSpawnOk,
-          status: 1,
-          stderr: 'Unable to find application named "IntelliJ IDEA"',
-        }
-      }
-      return { ...fakeSpawnOk }
-    }
-    const result = await openWorkspace(
-      { path: '/x', targetId: 'intellijidea' },
-      { platform: 'darwin', runCommand }
-    )
-    expect(result.ok).toBe(true)
-    expect(calls).toHaveLength(2)
-    expect(calls[1]?.args).toContain('IntelliJ IDEA CE')
   })
 })
 
@@ -385,7 +359,7 @@ describe('openWorkspace — input validation', () => {
   })
 
   test('cross-platform drift falls back to platform default instead of failing', async () => {
-    // User saved preference `iterm2` on a Mac, then ran Hive on Windows.
+    // User saved preference `ghostty` on a Mac, then ran Hive on Windows.
     // Should resolve to finder + explorer.exe instead of returning 4xx.
     const calls: OpenAttempt[] = []
     const runCommand: RunOpenCommand = async (command, args) => {
@@ -393,7 +367,7 @@ describe('openWorkspace — input validation', () => {
       return { ...fakeSpawnOk, status: 1 } // explorer always returns 1
     }
     const result = await openWorkspace(
-      { path: 'C:\\code', targetId: 'iterm2' },
+      { path: 'C:\\code', targetId: 'ghostty' },
       { platform: 'win32', runCommand }
     )
     expect(result.ok).toBe(true)

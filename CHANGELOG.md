@@ -50,6 +50,17 @@ chrome.
   the sidebar wider. Previously the wide layout used a 22px avatar while the
   collapsed layout used 32px, so expanding the sidebar made the avatars
   smaller; both modes now render at 32px.
+- Drops IntelliJ IDEA, Windsurf, and iTerm2 from the Open Workspace dropdown.
+  IntelliJ users typically launch from JetBrains Toolbox rather than a folder
+  picker; Windsurf overlaps with the existing Cursor / VS Code entries;
+  iTerm2 overlaps with the built-in macOS Terminal entry. macOS now exposes
+  seven targets (VS Code, VS Code Insiders, Cursor, Finder, Terminal,
+  Ghostty, Zed); Windows / Linux expose five (VS Code, VS Code Insiders,
+  Cursor, File Explorer / File Manager, Zed). A stored preference for any
+  removed target silently falls back to the platform default at load time.
+- Swaps the Zed, Ghostty, and Finder dropdown icons for the apps' official
+  brand marks (downsized to 64×64 raster) so each entry in the dropdown is
+  recognizable as the real application rather than an abstract glyph.
 
 ## 1.2.0 - 2026-05-18
 

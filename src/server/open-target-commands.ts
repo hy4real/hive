@@ -43,23 +43,10 @@ const macAttempts = (targetId: OpenTargetId, path: string): OpenAttempt[] => {
       return [{ command: 'open', args: ['-a', 'Visual Studio Code - Insiders', path] }]
     case 'cursor':
       return [{ command: 'open', args: ['-a', 'Cursor', path] }]
-    case 'windsurf':
-      return [{ command: 'open', args: ['-a', 'Windsurf', path] }]
     case 'terminal':
       return [{ command: 'open', args: ['-a', 'Terminal', path] }]
-    case 'iterm2':
-      // Bundle name has always been `iTerm.app` even after the iTerm2 rename;
-      // the `iTerm2` fallback in earlier ports is cargo-cult.
-      return [{ command: 'open', args: ['-a', 'iTerm', path] }]
     case 'ghostty':
       return [{ command: 'open', args: ['-a', 'Ghostty', path] }]
-    case 'intellijidea':
-      // 2025.3 unified the editions, but installs predating that still ship
-      // `IntelliJ IDEA CE.app` — retry once on the CE bundle.
-      return [
-        { command: 'open', args: ['-a', 'IntelliJ IDEA', path] },
-        { command: 'open', args: ['-a', 'IntelliJ IDEA CE', path] },
-      ]
     case 'zed':
       return [{ command: 'open', args: ['-a', 'Zed', path] }]
   }
@@ -75,8 +62,6 @@ const linuxAttempts = (targetId: OpenTargetId, path: string): OpenAttempt[] => {
       return [{ command: 'code-insiders', args: [path] }]
     case 'cursor':
       return [{ command: 'cursor', args: [path] }]
-    case 'windsurf':
-      return [{ command: 'windsurf', args: [path] }]
     case 'zed':
       return [{ command: 'zed', args: [path] }]
     default:
@@ -94,8 +79,6 @@ const windowsAttempts = (targetId: OpenTargetId, path: string): OpenAttempt[] =>
       return [{ command: 'code-insiders', args: [path] }]
     case 'cursor':
       return [{ command: 'cursor', args: [path] }]
-    case 'windsurf':
-      return [{ command: 'windsurf', args: [path] }]
     case 'zed':
       return [{ command: 'zed', args: [path] }]
     default:
