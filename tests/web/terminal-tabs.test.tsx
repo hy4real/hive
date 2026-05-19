@@ -26,38 +26,34 @@ const buildShellTab = (overrides: Partial<TerminalTab> = {}): TerminalTab =>
   }) as TerminalTab
 
 describe('TerminalTabs', () => {
-  test('clicking a tab fires onSelect with its id', () => {
+  test('renders a vertical side rail instead of a horizontal tab strip', () => {
+    render(
+      <TerminalTabs
+        tabs={[buildWorkerTab(), buildShellTab()]}
+        activeId="worker:w1"
+        onSelect={vi.fn()}
+        onNewShell={vi.fn()}
+        newShellPending={false}
+      />
+    )
+    expect(screen.queryByTestId('terminal-tab-strip')).toBeNull()
+    expect(screen.getByTestId('terminal-side-rail')).toBeInTheDocument()
+    expect(screen.getByRole('tablist').getAttribute('aria-orientation')).toBe('vertical')
+  })
+
+  test('clicking a rail tab fires onSelect with its id', () => {
     const onSelect = vi.fn()
     render(
       <TerminalTabs
         tabs={[buildWorkerTab(), buildShellTab()]}
         activeId="worker:w1"
         onSelect={onSelect}
-        onClose={vi.fn()}
         onNewShell={vi.fn()}
         newShellPending={false}
       />
     )
     fireEvent.click(screen.getByTestId('terminal-tab-shell:run-x'))
     expect(onSelect).toHaveBeenCalledWith('shell:run-x')
-  })
-
-  test('close button on the active tab fires onClose without bubbling to onSelect', () => {
-    const onSelect = vi.fn()
-    const onClose = vi.fn()
-    render(
-      <TerminalTabs
-        tabs={[buildWorkerTab()]}
-        activeId="worker:w1"
-        onSelect={onSelect}
-        onClose={onClose}
-        onNewShell={vi.fn()}
-        newShellPending={false}
-      />
-    )
-    fireEvent.click(screen.getByTestId('terminal-tab-close-worker:w1'))
-    expect(onClose).toHaveBeenCalledWith('worker:w1')
-    expect(onSelect).not.toHaveBeenCalled()
   })
 
   test('new-shell button fires onNewShell', () => {
@@ -67,7 +63,6 @@ describe('TerminalTabs', () => {
         tabs={[]}
         activeId={null}
         onSelect={vi.fn()}
-        onClose={vi.fn()}
         onNewShell={onNewShell}
         newShellPending={false}
       />
@@ -82,7 +77,6 @@ describe('TerminalTabs', () => {
         tabs={[buildWorkerTab(), buildShellTab()]}
         activeId="shell:run-x"
         onSelect={vi.fn()}
-        onClose={vi.fn()}
         onNewShell={vi.fn()}
         newShellPending={false}
       />
@@ -93,26 +87,18 @@ describe('TerminalTabs', () => {
     expect(active.querySelector('[data-tab-accent]')).not.toBeNull()
   })
 
-  test('close button is a sibling of the select button (no nested <button> in <button>)', () => {
-    // Regression: an earlier draft nested the close <button> inside the tab
-    // <button>, which is invalid HTML and breaks layout in real browsers.
-    // Assert the structural shape: close button's parent is the tab wrapper,
-    // not the select button.
+  test('rail tab is a single button without nested button controls', () => {
     render(
       <TerminalTabs
         tabs={[buildWorkerTab()]}
         activeId="worker:w1"
         onSelect={vi.fn()}
-        onClose={vi.fn()}
         onNewShell={vi.fn()}
         newShellPending={false}
       />
     )
-    const closeBtn = screen.getByTestId('terminal-tab-close-worker:w1')
-    const selectBtn = screen.getByTestId('terminal-tab-select-worker:w1')
-    expect(closeBtn.parentElement).toBe(selectBtn.parentElement)
-    expect(closeBtn.parentElement?.tagName).toBe('DIV')
-    // And no button descends from another button anywhere in the tab.
-    expect(selectBtn.querySelector('button')).toBeNull()
+    const tab = screen.getByTestId('terminal-tab-worker:w1')
+    expect(tab.tagName).toBe('BUTTON')
+    expect(tab.querySelector('button')).toBeNull()
   })
 })
