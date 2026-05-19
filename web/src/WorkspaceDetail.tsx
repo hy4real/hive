@@ -194,7 +194,13 @@ export const WorkspaceDetail = ({
   }
 
   const openShell = () => {
-    if (shellRuns.length === 0 && !shellStarting) startShell()
+    if (shellStartInFlightRef.current || shellStarting) return
+    const existingShellTab = panelTabs.tabs.find((tab) => tab.kind === 'shell')
+    if (existingShellTab) {
+      panelTabs.setActive(existingShellTab.id)
+      return
+    }
+    startShell()
   }
 
   const closeShellTab = (runId: string) => {
