@@ -1,8 +1,10 @@
-import { type FormEvent, useEffect, useRef, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { WorkerRole } from '../../../src/shared/types.js'
 import {
   type CommandPreset,
+  createRoleTemplate,
+  deleteRoleTemplate,
   listCommandPresets,
   listRoleTemplates,
   type RoleTemplate,
@@ -22,9 +24,13 @@ export interface WorkerComposerState {
   commandPresetId: string
   createWorkerError: string | null
   creating: boolean
+  customTemplates: RoleTemplate[]
   roleDescription: string
   roleDescriptionDefault: string
+  selectedTemplateId: string | null
   startupCommand: string
+  templateBusy: boolean
+  templateError: string | null
   workerName: string
   workerRole: WorkerRole
   setCommandPresetId: (value: string) => void
@@ -32,6 +38,9 @@ export interface WorkerComposerState {
   setStartupCommand: (value: string) => void
   setWorkerName: (value: string) => void
   setWorkerRole: (value: WorkerRole) => void
+  selectTemplate: (templateId: string | null) => void
+  saveAsTemplate: (name: string) => Promise<void>
+  deleteTemplate: (templateId: string) => Promise<void>
   randomizeWorkerName: () => void
   resetRoleDescription: () => void
   resetError: () => void
@@ -127,18 +136,24 @@ export const useWorkerComposer = ({
   const [workerName, setWorkerName] = useState('')
   const [workerRole, setWorkerRole] = useState<WorkerRole>('coder')
   const [roleTemplates, setRoleTemplates] = useState<RoleTemplate[]>([])
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
+  const [templateBusy, setTemplateBusy] = useState(false)
+  const [templateError, setTemplateError] = useState<string | null>(null)
   const [roleDescription, setRoleDescriptionState] = useState(
     fallbackRoleDescriptions[language].coder
   )
   const [commandPresets, setCommandPresets] = useState<CommandPreset[]>([])
   const [commandPresetId, setCommandPresetId] = useState('claude')
-  const [commandPresetTouched, setCommandPresetTouched] = useState(false)
   const [startupCommand, setStartupCommand] = useState('')
   const [createWorkerError, setCreateWorkerError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const workerNameGeneratedRef = useRef(false)
   const roleDescriptionEditedRef = useRef(false)
   const roleDescriptionDefault = getDefaultDescription(workerRole, roleTemplates, language)
+  const customTemplates = useMemo(
+    () => roleTemplates.filter((template) => !template.isBuiltin),
+    [roleTemplates]
+  )
 
   useEffect(() => {
     if (!open) return
@@ -189,10 +204,11 @@ export const useWorkerComposer = ({
   }, [open, workerRole, language])
 
   useEffect(() => {
+    if (selectedTemplateId !== null) return
     if (!roleDescriptionEditedRef.current) {
       setRoleDescriptionState(getDefaultDescription(workerRole, roleTemplates, language))
     }
-  }, [language, roleTemplates, workerRole])
+  }, [language, roleTemplates, workerRole, selectedTemplateId])
 
   const setRoleDescription = (value: string) => {
     roleDescriptionEditedRef.current = true
@@ -217,8 +233,72 @@ export const useWorkerComposer = ({
 
   const selectWorkerRole = (value: WorkerRole) => {
     setWorkerRole(value)
+    setSelectedTemplateId(null)
     roleDescriptionEditedRef.current = false
     setRoleDescriptionState(getDefaultDescription(value, roleTemplates, language))
+  }
+
+  const selectTemplate = (templateId: string | null) => {
+    if (templateId === null) {
+      // Clear selection but stay on the Custom role with the blank default.
+      setWorkerRole('custom')
+      setSelectedTemplateId(null)
+      roleDescriptionEditedRef.current = false
+      setRoleDescriptionState(fallbackRoleDescriptions[language].custom)
+      return
+    }
+    const template = roleTemplates.find((entry) => entry.id === templateId)
+    if (!template || template.isBuiltin) return
+    setWorkerRole('custom')
+    setSelectedTemplateId(templateId)
+    roleDescriptionEditedRef.current = false
+    setRoleDescriptionState(template.description)
+  }
+
+  const saveAsTemplate = async (name: string) => {
+    const trimmedName = name.trim()
+    const trimmedDescription = roleDescription.trim()
+    if (!trimmedName || !trimmedDescription) return
+    setTemplateBusy(true)
+    setTemplateError(null)
+    try {
+      const created = await createRoleTemplate({
+        name: trimmedName,
+        roleType: 'custom',
+        description: trimmedDescription,
+      })
+      setRoleTemplates((current) => [...current, created])
+      setSelectedTemplateId(created.id)
+      setWorkerRole('custom')
+      roleDescriptionEditedRef.current = false
+      setRoleDescriptionState(created.description)
+    } catch (error) {
+      setTemplateError(error instanceof Error ? error.message : String(error))
+      throw error
+    } finally {
+      setTemplateBusy(false)
+    }
+  }
+
+  const deleteTemplate = async (templateId: string) => {
+    const template = roleTemplates.find((entry) => entry.id === templateId)
+    if (!template || template.isBuiltin) return
+    setTemplateBusy(true)
+    setTemplateError(null)
+    try {
+      await deleteRoleTemplate(templateId)
+      setRoleTemplates((current) => current.filter((entry) => entry.id !== templateId))
+      if (selectedTemplateId === templateId) {
+        setSelectedTemplateId(null)
+        roleDescriptionEditedRef.current = false
+        setRoleDescriptionState(fallbackRoleDescriptions[language].custom)
+      }
+    } catch (error) {
+      setTemplateError(error instanceof Error ? error.message : String(error))
+      throw error
+    } finally {
+      setTemplateBusy(false)
+    }
   }
 
   const resetRoleDescription = () => {
@@ -227,7 +307,6 @@ export const useWorkerComposer = ({
   }
 
   const selectCommandPresetId = (value: string) => {
-    setCommandPresetTouched(true)
     setCommandPresetId(value)
   }
 
@@ -235,9 +314,8 @@ export const useWorkerComposer = ({
     event.preventDefault()
     setCreating(true)
     setCreateWorkerError(null)
-    const launchPresetId = startupCommand.trim() && !commandPresetTouched ? '' : commandPresetId
     void createWorker({
-      commandPresetId: launchPresetId,
+      commandPresetId,
       name: workerName,
       role: workerRole,
       roleDescription,
@@ -247,8 +325,8 @@ export const useWorkerComposer = ({
         setWorkerName('')
         workerNameGeneratedRef.current = false
         selectWorkerRole('coder')
+        setSelectedTemplateId(null)
         setCommandPresetId('claude')
-        setCommandPresetTouched(false)
         setStartupCommand('')
         onSuccess()
         if (error) setCreateWorkerError(error)
@@ -264,9 +342,13 @@ export const useWorkerComposer = ({
     commandPresetId,
     createWorkerError,
     creating,
+    customTemplates,
     roleDescription,
     roleDescriptionDefault,
+    selectedTemplateId,
     startupCommand,
+    templateBusy,
+    templateError,
     workerName,
     workerRole,
     setCommandPresetId: selectCommandPresetId,
@@ -274,6 +356,9 @@ export const useWorkerComposer = ({
     setStartupCommand,
     setWorkerName: setWorkerNameFromUser,
     setWorkerRole: selectWorkerRole,
+    selectTemplate,
+    saveAsTemplate,
+    deleteTemplate,
     randomizeWorkerName,
     resetRoleDescription,
     resetError: () => setCreateWorkerError(null),

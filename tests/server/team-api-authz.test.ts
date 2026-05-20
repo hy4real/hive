@@ -368,6 +368,55 @@ describe('team API authz (R1.4)', () => {
     }
   })
 
+  test('worker cancel is rejected and leaves the open dispatch pending', async () => {
+    const ctx = await setupHive()
+    try {
+      const orchToken = ctx.hive.store.peekAgentToken(ctx.orchestratorId)
+      if (!orchToken) {
+        throw new Error('Expected orchestrator token after start')
+      }
+      const sendResponse = await fetch(`${ctx.baseUrl}/api/team/send`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          project_id: ctx.workspaceId,
+          from_agent_id: ctx.orchestratorId,
+          token: orchToken,
+          to: 'Alice',
+          text: 'task A',
+        }),
+      })
+      const sendBody = (await sendResponse.json()) as { dispatch_id: string }
+
+      const workerToken = ctx.hive.store.peekAgentToken(ctx.worker.id)
+      if (!workerToken) {
+        throw new Error('Expected worker token after start')
+      }
+      const response = await fetch(`${ctx.baseUrl}/api/team/cancel`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          project_id: ctx.workspaceId,
+          from_agent_id: ctx.worker.id,
+          token: workerToken,
+          dispatch_id: sendBody.dispatch_id,
+          reason: 'not allowed',
+        }),
+      })
+
+      expect(response.status).toBe(403)
+      await expect(response.json()).resolves.toEqual({
+        error: "Role 'coder' is not allowed to run team cancel",
+      })
+      expect(ctx.hive.store.listDispatches(ctx.workspaceId)).toEqual([
+        expect.objectContaining({ id: sendBody.dispatch_id, status: 'submitted' }),
+      ])
+      expect(ctx.hive.store.getWorker(ctx.workspaceId, ctx.worker.id).pendingTaskCount).toBe(1)
+    } finally {
+      await ctx.hive.close()
+    }
+  })
+
   test('worker status without an open dispatch forwards and records status without dispatch', async () => {
     const ctx = await setupHive()
     try {

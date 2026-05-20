@@ -1,3 +1,4 @@
+import type { OpenTargetId, OpenWorkspaceErrorCode } from '../../src/shared/open-targets.js'
 import type {
   AgentSummary,
   TeamListItem,
@@ -5,6 +6,8 @@ import type {
   WorkerRole,
   WorkspaceSummary,
 } from '../../src/shared/types.js'
+
+export type { OpenTargetId, OpenWorkspaceErrorCode }
 
 const fromPayload = (payload: TeamListItemPayload): TeamListItem => ({
   id: payload.id,
@@ -115,6 +118,13 @@ export interface CommandPreset {
 export interface RoleTemplate {
   description: string
   id: string
+  isBuiltin: boolean
+  name: string
+  roleType: WorkerRole | 'orchestrator'
+}
+
+export interface RoleTemplateInput {
+  description: string
   name: string
   roleType: WorkerRole | 'orchestrator'
 }
@@ -130,9 +140,27 @@ interface CommandPresetPayload {
 interface RoleTemplatePayload {
   description: string
   id: string
+  is_builtin: boolean
   name: string
   role_type: WorkerRole | 'orchestrator'
 }
+
+const fromRoleTemplatePayload = (payload: RoleTemplatePayload): RoleTemplate => ({
+  description: payload.description,
+  id: payload.id,
+  isBuiltin: payload.is_builtin,
+  name: payload.name,
+  roleType: payload.role_type,
+})
+
+const toRoleTemplateBody = (input: RoleTemplateInput) => ({
+  name: input.name,
+  role_type: input.roleType,
+  description: input.description,
+  default_command: '',
+  default_args: [],
+  default_env: {},
+})
 
 export interface AgentStartResult {
   error: string | null
@@ -281,6 +309,33 @@ export interface TerminalRunSummary {
   status: string
 }
 
+export const workspaceShellAgentId = (workspaceId: string): string => `${workspaceId}:shell`
+
+export const isWorkspaceShellRun = (run: TerminalRunSummary, workspaceId: string): boolean =>
+  run.agent_id === workspaceShellAgentId(workspaceId)
+
+export const startWorkspaceShell = async (workspaceId: string): Promise<TerminalRunSummary> => {
+  const response = await apiFetch(`/api/workspaces/${workspaceId}/shell/start`, {
+    method: 'POST',
+  })
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Failed to start workspace terminal'))
+  }
+
+  return (await response.json()) as TerminalRunSummary
+}
+
+export const closeWorkspaceShell = async (workspaceId: string, runId: string): Promise<void> => {
+  const response = await apiFetch(`/api/workspaces/${workspaceId}/shell/${runId}`, {
+    method: 'DELETE',
+  })
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Failed to close workspace terminal'))
+  }
+}
+
 export const listRoleTemplates = async (): Promise<RoleTemplate[]> => {
   const response = await apiFetch('/api/settings/role-templates', {
     mode: 'same-origin',
@@ -291,12 +346,48 @@ export const listRoleTemplates = async (): Promise<RoleTemplate[]> => {
   }
 
   const payload = (await response.json()) as RoleTemplatePayload[]
-  return payload.map((template) => ({
-    description: template.description,
-    id: template.id,
-    name: template.name,
-    roleType: template.role_type,
-  }))
+  return payload.map(fromRoleTemplatePayload)
+}
+
+export const createRoleTemplate = async (input: RoleTemplateInput): Promise<RoleTemplate> => {
+  const response = await apiFetch('/api/settings/role-templates', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(toRoleTemplateBody(input)),
+  })
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Failed to create role template'))
+  }
+
+  return fromRoleTemplatePayload((await response.json()) as RoleTemplatePayload)
+}
+
+export const updateRoleTemplate = async (
+  templateId: string,
+  input: RoleTemplateInput
+): Promise<RoleTemplate> => {
+  const response = await apiFetch(`/api/settings/role-templates/${templateId}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(toRoleTemplateBody(input)),
+  })
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Failed to update role template'))
+  }
+
+  return fromRoleTemplatePayload((await response.json()) as RoleTemplatePayload)
+}
+
+export const deleteRoleTemplate = async (templateId: string): Promise<void> => {
+  const response = await apiFetch(`/api/settings/role-templates/${templateId}`, {
+    method: 'DELETE',
+  })
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Failed to delete role template'))
+  }
 }
 
 export const listTerminalRuns = async (workspaceId: string): Promise<TerminalRunSummary[]> => {
@@ -449,4 +540,47 @@ export const pickFolder = async (): Promise<PickFolderResponse> => {
     mode: 'same-origin',
   })
   return (await response.json()) as PickFolderResponse
+}
+
+export type OpenWorkspaceResult =
+  | { ok: true; effectiveTargetId: OpenTargetId }
+  | { ok: false; effectiveTargetId: OpenTargetId; errorCode: OpenWorkspaceErrorCode }
+
+interface OpenWorkspaceSuccessPayload {
+  ok: true
+  effective_target_id: OpenTargetId
+}
+
+interface OpenWorkspaceFailurePayload {
+  ok: false
+  effective_target_id: OpenTargetId
+  error_code: OpenWorkspaceErrorCode
+}
+
+export const openWorkspaceInEditor = async (
+  workspaceId: string,
+  targetId: OpenTargetId
+): Promise<OpenWorkspaceResult> => {
+  const response = await apiFetch(`/api/workspaces/${workspaceId}/open`, {
+    body: JSON.stringify({ target_id: targetId }),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST',
+  })
+
+  // 200 success and 502 service failure both return structured JSON we can
+  // surface; only true transport / 4xx failures (workspace gone, target id
+  // tampered) throw.
+  if (response.status === 200) {
+    const body = (await response.json()) as OpenWorkspaceSuccessPayload
+    return { ok: true, effectiveTargetId: body.effective_target_id }
+  }
+  if (response.status === 502) {
+    const body = (await response.json()) as OpenWorkspaceFailurePayload
+    return {
+      ok: false,
+      effectiveTargetId: body.effective_target_id,
+      errorCode: body.error_code,
+    }
+  }
+  throw new Error(await readErrorMessage(response, 'Failed to open workspace'))
 }

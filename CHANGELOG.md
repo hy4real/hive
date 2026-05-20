@@ -2,16 +2,163 @@
 
 All notable user-facing changes will be documented in this file.
 
-## Public source line - 2026-05-20
+## 1.3.0 - 2026-05-20
 
-This public repository now tracks Hive's baseline public source line. The
-latest stable npm package may be built from a private release line and can be
-newer than the code mirrored here.
+Installable Hive: turns the web shell into a real PWA so Chrome / Edge can
+launch it from a dock icon, in its own window, without a visible browser
+chrome.
 
-- Install and update Hive from npm: `npm install -g @tt-a1i/hive@latest`.
-- The public changelog records changes that are mirrored into this repository.
-- Product changes that ship only from the private release line are intentionally
-  not expanded here until they are mirrored into the public source line.
+- Adds a web app manifest with icons (192, 512, maskable 512, apple-touch 180),
+  a wide screenshot, and shortcuts for "Add Workspace" and "Try Demo" so
+  right-clicking the dock icon jumps straight to those flows.
+- Installation is driven entirely by the browser's omnibox install icon
+  (Chrome / Edge / Brave); Hive deliberately does not add a redundant topbar
+  button.
+- Ships a service worker (`/sw.js`) that caches the SPA shell + hashed asset
+  chunks + static icons / sounds / cli-icons, but never intercepts `/api/*`,
+  `/ws/*`, or non-GET requests — auth cookies and WebSockets keep their
+  native paths. Each release writes to its own cache bucket and older buckets
+  are kept so tabs still controlled by the previous SW can resolve their
+  lazy-imported chunks.
+- Surfaces shell updates as a bottom-right toast (`Web UI updated — Reload to
+  activate`) instead of forcing a refresh. The Reload button stays disabled
+  while any terminal run is still working so updates never interrupt an
+  in-flight agent.
+- Routes service-worker auto-reloads through the same silent reload helper used
+  elsewhere in the app, so browser updates do not trip the close-confirmation
+  guard.
+- Replaces the workspace area with a dedicated `Hive runtime is not running`
+  page when the initial bootstrap fails. The page pings `/api/version` every
+  three seconds and reloads automatically once the daemon comes back; a manual
+  Retry button is offered alongside.
+- Hardens the server: `/sw.js` is served with `Cache-Control: no-store` and the
+  manifest with `Cache-Control: max-age=0, must-revalidate`, so SW updates
+  propagate the next time the browser checks instead of waiting on a stale
+  HTTP cache.
+- Notes for first-time installers: the SW activates after the first reload
+  following install. On separate ports (`hive --port 4011` vs `--port 3000`)
+  Chrome treats Hive as two distinct PWAs because the install scope is keyed
+  by origin. To fully remove a PWA install, use
+  `chrome://apps` → right-click the Hive tile → Remove.
+- Always asks the browser to confirm before closing the tab or PWA window so
+  Cmd-W on an installed app never closes silently. Modern browsers gate the
+  prompt on prior page interaction — opening the window and immediately
+  pressing Cmd-W still closes cleanly by browser policy.
+- Open Workspace dropdown now uses each app's brand color for its icon
+  instead of the previous monochrome white treatment, and visually separates
+  VS Code from VS Code Insiders so users can tell their installed targets
+  apart at a glance.
+- Workspace avatars in the sidebar stay the same size when the user drags
+  the sidebar wider. Previously the wide layout used a 22px avatar while the
+  collapsed layout used 32px, so expanding the sidebar made the avatars
+  smaller; both modes now render at 32px.
+- Drops IntelliJ IDEA, Windsurf, and iTerm2 from the Open Workspace dropdown.
+  IntelliJ users typically launch from JetBrains Toolbox rather than a folder
+  picker; Windsurf overlaps with the existing Cursor / VS Code entries;
+  iTerm2 overlaps with the built-in macOS Terminal entry. macOS now exposes
+  seven targets (VS Code, VS Code Insiders, Cursor, Finder, Terminal,
+  Ghostty, Zed); Windows / Linux expose five (VS Code, VS Code Insiders,
+  Cursor, File Explorer / File Manager, Zed). A stored preference for any
+  removed target silently falls back to the platform default at load time.
+- Swaps the Zed, Ghostty, and Finder dropdown icons for the apps' official
+  brand marks (Finder uses the macOS app icon, Ghostty 96×96 / Zed 64×64
+  raster) so each entry reads as the real application rather than an
+  abstract glyph. Ghostty's mark renders inside a generous safe-zone so its
+  display size is bumped 20% via CSS scale to balance the row visually.
+- Replaces the Worker detail modal and Workspace shell dialog with a docked,
+  resizable, VSCode-style terminal panel inside the right column (under the
+  team members pane). Worker tabs and shell tabs share the strip; clicking a
+  member card opens that worker as a tab; the panel hides when no tabs are
+  open. Closing a worker tab keeps the underlying PTY running — worker
+  lifecycle is owned by the card hover cluster. Tab list, active tab, and
+  panel height all persist (height globally, tabs + active per-workspace).
+  Cmd-W (Ctrl-W on Windows / Linux) closes the active tab; a "+" button in
+  the tab strip starts a new shell. Start failures and shell-start failures
+  now surface as toasts instead of inline modal/dialog banners.
+- Moves "Save as template" into the role-instructions toolbar in the Add Member
+  flow, keeping template actions closer to the prompt editor instead of adding
+  another standalone control in the dialog body.
+
+## 1.2.0 - 2026-05-18
+
+Opens the active workspace in your editor, terminal, or file manager from
+Hive's topbar.
+
+- Adds an "Open" split button to the topbar that launches the active workspace
+  in a chosen application. Ten targets on macOS (VS Code, VS Code Insiders,
+  Cursor, Windsurf, Finder, Terminal, iTerm2, Ghostty, IntelliJ IDEA, Zed) and
+  six on Windows / Linux (VS Code, VS Code Insiders, Cursor, Windsurf, File
+  Explorer / File Manager, Zed).
+- Persists the preferred target per browser via `localStorage` so the next
+  click jumps to the same app. Stale preferences for apps that aren't valid on
+  the current platform fall back to the OS file manager instead of erroring.
+- Surfaces failures as localized toast notifications. Distinguishes
+  "app not installed", "launcher not on PATH", and other failure modes so a
+  missing Cursor install reads differently from a misconfigured `code` CLI.
+- Backend launches each command via `execFile` with an argv array — no shell
+  is involved, so workspace paths containing spaces, Unicode, or quotes pass
+  through verbatim. Paths containing newlines or NUL bytes are rejected before
+  dispatch.
+- Special-cases Windows `explorer.exe`, which returns exit code 1 even on
+  success: spawn-errors are still surfaced, but a non-zero exit no longer
+  shows a spurious toast.
+
+## 1.1.5 - 2026-05-18
+
+Custom startup command and close-guard fixes.
+
+- Keeps the selected CLI interaction driver when a custom startup command is
+  provided. This lets aliases such as `ccs --continue` start Claude Code while
+  Hive still submits messages using Claude Code's bracketed-paste flow.
+- Adds an explicit "Generic command" option for unknown CLIs such as Qwen or
+  custom agent shells that should use only the provided startup command.
+- Covers both directions of the shell-wrapper path: `team send` into a custom
+  worker command and `team report` back into a custom orchestrator command.
+- Prompts with the browser's native confirmation dialog before closing or
+  refreshing the Hive tab while the active workspace still has running terminal
+  sessions.
+
+## 1.1.4 - 2026-05-17
+
+Update guidance polish.
+
+- Shows `npm install -g @tt-a1i/hive@latest` in update prompts instead of
+  `npm update -g @tt-a1i/hive`, making the upgrade command explicit and
+  deterministic across npm versions.
+
+## 1.1.3 - 2026-05-17
+
+Brand polish.
+
+- Uses the README logo for the browser favicon and the in-app topbar brand mark.
+- Removes the old inline SVG favicon from the web shell.
+
+## 1.1.2 - 2026-05-17
+
+Release workflow fix.
+
+- Runs npm publish on Ubuntu instead of macOS. Publishing does not require
+  macOS, and the Ubuntu runner is a better fit for the publish step.
+
+## 1.1.1 - 2026-05-17
+
+Release workflow fix.
+
+- Publishes without production source maps in the npm tarball while keeping the
+  user-facing package contents unchanged.
+
+## 1.1.0 - 2026-05-17
+
+Workspace terminal release.
+
+- Added a Workspace terminal that opens from the active workspace and runs in
+  the workspace directory. It supports multiple shell tabs, full-height terminal
+  space, tab switching, and closing individual tabs without closing the whole
+  dialog.
+- Kept the external install path unchanged. Users still install with
+  `npm install -g @tt-a1i/hive` or run with `npx @tt-a1i/hive`.
+- Hid the dormant task-graph / Blueprint entry from the main UI while keeping
+  the underlying code in place for possible future use.
 
 ## 1.0.0 - 2026-05-17
 
@@ -141,6 +288,8 @@ Update-awareness pass for public-preview installs.
   version is available.
 - The app topbar surfaces the same update availability and install command in
   the UI.
+- The workspace shell was split into smaller app-level components so future
+  UI changes do not push `web/src/app.tsx` past its size budget.
 
 ## 0.6.0-alpha.3 - 2026-05-14
 

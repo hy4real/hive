@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { parseReportArgs } from '../../src/cli/team.js'
+import { parseCancelArgs, parseReportArgs } from '../../src/cli/team.js'
 
 describe('parseReportArgs', () => {
   test('accepts the legacy positional-first form', () => {
@@ -183,5 +183,26 @@ describe('parseReportArgs', () => {
       }
       throw new Error('expected parseReportArgs to throw')
     })
+  })
+})
+
+describe('parseCancelArgs', () => {
+  test('requires a dispatch id and joins multi-word reasons', () => {
+    expect(parseCancelArgs(['--dispatch', 'dispatch-1', 'Direction', 'changed'])).toEqual({
+      dispatchId: 'dispatch-1',
+      reason: 'Direction changed',
+    })
+  })
+
+  test('rejects missing dispatch id with cancel usage', () => {
+    try {
+      parseCancelArgs(['Direction changed'])
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      expect(message).toContain('Missing --dispatch <dispatch-id>')
+      expect(message).toContain('Usage: team cancel')
+      return
+    }
+    throw new Error('expected parseCancelArgs to throw')
   })
 })

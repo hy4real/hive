@@ -231,6 +231,21 @@ describe('team protocol end to end', () => {
       const reportBody = (await reportResponse.json()) as { dispatch_id: string; ok: true }
       expect(reportBody.dispatch_id).toBe(secondSendBody.dispatch_id)
 
+      const cancelResponse = await fetch(`${baseUrl}/api/team/cancel`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          project_id: workspace.id,
+          from_agent_id: orchestratorId,
+          token: hive.store.peekAgentToken(orchestratorId),
+          dispatch_id: sendBody.dispatch_id,
+          reason: '方向变更，登录接口任务取消',
+        }),
+      })
+      expect(cancelResponse.status).toBe(202)
+      const cancelBody = (await cancelResponse.json()) as { dispatch_id: string; ok: true }
+      expect(cancelBody.dispatch_id).toBe(sendBody.dispatch_id)
+
       const reportedDispatchesResponse = await fetch(
         `${baseUrl}/api/ui/workspaces/${workspace.id}/dispatches`,
         { headers: { cookie } }
@@ -245,8 +260,8 @@ describe('team protocol end to end', () => {
       expect(reportedDispatches).toEqual([
         expect.objectContaining({
           id: sendBody.dispatch_id,
-          state: 'submitted',
-          report_text: null,
+          state: 'cancelled',
+          report_text: '方向变更，登录接口任务取消',
           artifacts: [],
         }),
         expect.objectContaining({
@@ -274,8 +289,19 @@ describe('team protocol end to end', () => {
         id: string
         state: string
       }>
-      expect(submittedDispatches).toEqual([
-        expect.objectContaining({ id: sendBody.dispatch_id, state: 'submitted' }),
+      expect(submittedDispatches).toEqual([])
+
+      const cancelledDispatchesResponse = await fetch(
+        `${baseUrl}/api/ui/workspaces/${workspace.id}/dispatches?state=cancelled`,
+        { headers: { cookie } }
+      )
+      expect(cancelledDispatchesResponse.status).toBe(200)
+      const cancelledDispatches = (await cancelledDispatchesResponse.json()) as Array<{
+        id: string
+        state: string
+      }>
+      expect(cancelledDispatches).toEqual([
+        expect.objectContaining({ id: sendBody.dispatch_id, state: 'cancelled' }),
       ])
 
       const invalidStateResponse = await fetch(
@@ -302,7 +328,7 @@ describe('team protocol end to end', () => {
       )
       expect(hugeOffsetResponse.status).toBe(400)
 
-      const secondReportResponse = await fetch(`${baseUrl}/api/team/report`, {
+      const cancelledReportResponse = await fetch(`${baseUrl}/api/team/report`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -314,12 +340,7 @@ describe('team protocol end to end', () => {
           artifacts: ['src/auth.ts'],
         }),
       })
-      expect(secondReportResponse.status).toBe(202)
-      const secondReportBody = (await secondReportResponse.json()) as {
-        dispatch_id: string
-        ok: true
-      }
-      expect(secondReportBody.dispatch_id).toBe(sendBody.dispatch_id)
+      expect(cancelledReportResponse.status).toBe(409)
 
       await waitFor(async () => {
         const teamResponse = await fetch(`${baseUrl}/api/ui/workspaces/${workspace.id}/team`, {
@@ -346,8 +367,8 @@ describe('team protocol end to end', () => {
       expect(persistedDispatches).toEqual([
         expect.objectContaining({
           id: sendBody.dispatch_id,
-          reportText: '已完成登录接口',
-          status: 'reported',
+          reportText: '方向变更，登录接口任务取消',
+          status: 'cancelled',
         }),
         expect.objectContaining({
           id: secondSendBody.dispatch_id,
@@ -356,15 +377,12 @@ describe('team protocol end to end', () => {
         }),
       ])
       const messages = runtimeStore.listMessagesForRecovery(workspace.id, 0)
-      expect(messages).toHaveLength(4)
+      expect(messages).toHaveLength(3)
       expect(messages).toContainEqual(
         expect.objectContaining({ type: 'send', to: worker.id, text: '实现登录接口' })
       )
       expect(messages).toContainEqual(
         expect.objectContaining({ type: 'send', to: worker.id, text: '补充测试' })
-      )
-      expect(messages).toContainEqual(
-        expect.objectContaining({ type: 'report', from: worker.id, text: '已完成登录接口' })
       )
       expect(messages).toContainEqual(
         expect.objectContaining({ type: 'report', from: worker.id, text: '补充测试已完成' })

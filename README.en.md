@@ -33,12 +33,6 @@ English · [简体中文](./README.md)
 > [npm](https://www.npmjs.com/package/@tt-a1i/hive) and the badge above resolves
 > to it.
 
-> Release note: this public repository keeps Hive's baseline public source
-> line. The latest stable npm package may be built from a private release line
-> and may include product capabilities that are not mirrored here yet. This
-> repository's `CHANGELOG.md` tracks public-source changes only; install and
-> update from the npm package.
-
 ## Why Hive
 
 CLI agents are powerful, but coordinating several of them manually is
@@ -80,6 +74,39 @@ hive
 
 Open the printed local URL, usually `http://127.0.0.1:3000/`. Use
 `hive --port 4010` when you need a specific local port.
+
+To upgrade in place:
+
+```bash
+hive update
+```
+
+`hive update` runs `npm install -g @tt-a1i/hive@latest` in place. Restart any
+in-flight Hive process to pick up the new version. If you installed Hive with
+pnpm or yarn, upgrade through the same package manager — otherwise the new
+npm copy will shadow your existing install.
+
+Install Hive as an app (optional):
+
+Open `http://127.0.0.1:3000/` in Chrome, Edge, or Brave and click the install
+icon at the right edge of the browser's omnibox. The PWA launches in its own
+dock-anchored window without browser chrome and shows **Add Workspace** /
+**Try Demo** shortcuts from the dock right-click menu. Firefox and Safari
+currently don't implement the install-prompt protocol, so the omnibox icon
+only appears in Chromium-based browsers.
+
+The Hive daemon must still be running for the PWA to do anything; if the
+runtime isn't reachable when you launch the app, you'll see a "Hive runtime
+is not running" page that auto-reloads once `hive` is back on `127.0.0.1`.
+The PWA install scope is keyed by origin, so `hive --port 4011` installs as
+a separate app from `hive --port 3000`. To uninstall, visit `chrome://apps`,
+right-click the Hive tile, and choose **Remove from Chrome…**.
+
+Hive asks the browser to confirm before closing the tab or PWA window so an
+accidental Cmd-W doesn't drop your session. Modern browsers gate that prompt
+on prior page interaction — if you open the PWA and immediately press Cmd-W
+without clicking or typing anywhere first, it still closes cleanly. That's a
+browser policy, not a Hive bug.
 
 First-run flow:
 

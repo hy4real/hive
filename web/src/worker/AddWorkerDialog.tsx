@@ -3,7 +3,7 @@ import { Dices } from 'lucide-react'
 import type { FormEvent } from 'react'
 
 import type { WorkerRole } from '../../../src/shared/types.js'
-import type { CommandPreset } from '../api.js'
+import type { CommandPreset, RoleTemplate } from '../api.js'
 import { useI18n } from '../i18n.js'
 import { Tooltip } from '../ui/Tooltip.js'
 import { useToast } from '../ui/useToast.js'
@@ -11,6 +11,7 @@ import {
   AgentCliPicker,
   RoleInstructionsField,
   RolePicker,
+  RoleTemplatePicker,
   SectionLabel,
   StartupCommandField,
 } from './AddWorkerDialogFields.js'
@@ -19,40 +20,54 @@ type AddWorkerDialogProps = {
   commandPresets: CommandPreset[]
   commandPresetId: string
   creating?: boolean
+  customTemplates: RoleTemplate[]
   onClose: () => void
+  onDeleteTemplate: (templateId: string) => Promise<void> | void
   onNameChange: (value: string) => void
   onPresetChange: (value: string) => void
   onRandomName: () => void
   onRoleDescriptionChange: (value: string) => void
   onRoleDescriptionReset: () => void
   onRoleChange: (value: WorkerRole) => void
+  onSaveAsTemplate: (name: string) => Promise<void> | void
   onStartupCommandChange: (value: string) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
+  onTemplateChange: (templateId: string | null) => void
   roleDescription: string
   roleDescriptionDefault: string
+  selectedTemplateId: string | null
   startupCommand: string
+  templateBusy: boolean
   workerName: string
   workerRole: WorkerRole
+  writeDisabledReason?: string
 }
 
 export const AddWorkerDialog = ({
   commandPresets,
   commandPresetId,
   creating = false,
+  customTemplates,
   onClose,
+  onDeleteTemplate,
   onNameChange,
   onPresetChange,
   onRandomName,
   onRoleDescriptionChange,
   onRoleDescriptionReset,
   onRoleChange,
+  onSaveAsTemplate,
   onStartupCommandChange,
   onSubmit,
+  onTemplateChange,
   roleDescription,
   roleDescriptionDefault,
+  selectedTemplateId,
   startupCommand,
+  templateBusy,
   workerName,
   workerRole,
+  writeDisabledReason,
 }: AddWorkerDialogProps) => {
   const { t } = useI18n()
   const toast = useToast()
@@ -67,6 +82,7 @@ export const AddWorkerDialog = ({
   // the user always gets actionable feedback (a warning toast) instead of
   // a silently-greyed CTA. Returns the first blocking reason or null.
   const validateBeforeSubmit = (): string | null => {
+    if (writeDisabledReason) return writeDisabledReason
     if (!workerName.trim()) return t('addWorker.enterName')
     if (!commandPresetId && !startupCommandClean) return t('addWorker.pickCliOrStartup')
     if (selectedPreset?.available === false && !startupCommandClean) {
@@ -147,12 +163,29 @@ export const AddWorkerDialog = ({
                 </label>
 
                 <RolePicker workerRole={workerRole} onRoleChange={onRoleChange} />
+                {workerRole === 'custom' ? (
+                  <RoleTemplatePicker
+                    customTemplates={customTemplates}
+                    disabledReason={writeDisabledReason}
+                    onDeleteTemplate={onDeleteTemplate}
+                    onSelect={onTemplateChange}
+                    selectedTemplateId={selectedTemplateId}
+                  />
+                ) : null}
                 <RoleInstructionsField
+                  canSaveAsTemplate={
+                    workerRole === 'custom' &&
+                    !selectedTemplateId &&
+                    roleDescription.trim().length > 0
+                  }
                   modified={roleDescriptionModified}
                   onChange={onRoleDescriptionChange}
                   onReset={onRoleDescriptionReset}
+                  onSaveAsTemplate={onSaveAsTemplate}
                   roleDescription={roleDescription}
+                  templateBusy={templateBusy}
                   workerRole={workerRole}
+                  writeDisabledReason={writeDisabledReason}
                 />
                 <AgentCliPicker
                   commandPresetId={commandPresetId}
@@ -176,7 +209,8 @@ export const AddWorkerDialog = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={creating}
+                  disabled={creating || Boolean(writeDisabledReason)}
+                  title={writeDisabledReason ?? undefined}
                   className="icon-btn icon-btn--primary"
                   data-testid="add-worker-submit"
                 >

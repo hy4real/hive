@@ -204,16 +204,19 @@ describe('worker flow with real server', () => {
       .find((run) => run.agent_name === 'Alice')
     expect(workerRun?.run_id).toEqual(expect.any(String))
 
-    // Verify clicking the card opens the modal and the PTY portal mounts.
+    // Verify clicking the card opens the worker detail modal, matching the
+    // released member-window behavior, instead of moving workers into the
+    // bottom terminal panel.
     fireEvent.click(card)
-    await screen.findByRole('dialog', { name: 'Alice' })
+    const modal = await screen.findByTestId('worker-modal')
+    expect(within(modal).getByTestId('worker-modal-terminal-slot')).toBeInTheDocument()
+    expect(screen.queryByTestId('terminal-bottom-panel')).toBeNull()
     await waitFor(() => {
-      expect(document.querySelector('[id^="worker-pty-"]')).not.toBeNull()
+      expect(document.getElementById(`worker-pty-${workerRun?.run_id}`)).not.toBeNull()
     })
-    // Close modal — control actions (Stop/Restart/Delete) live on the card now.
-    fireEvent.click(screen.getByLabelText('Close worker detail'))
+    fireEvent.click(within(modal).getByLabelText('Close worker detail'))
     await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: 'Alice' })).toBeNull()
+      expect(screen.queryByTestId('worker-modal')).toBeNull()
     })
 
     // Delete via the card's hover-revealed action cluster.
@@ -298,7 +301,7 @@ describe('worker flow with real server', () => {
     expect(nameInput.value).toMatch(/^[\u4e00-\u9fff]+-[\u4e00-\u9fff]+-[0-9]{2}$/)
   })
 
-  test('Add Worker dialog can override the default preset with a full startup command', async () => {
+  test('Add Worker dialog can run a generic full startup command without preset semantics', async () => {
     render(<App />)
 
     await waitFor(() => {
@@ -310,6 +313,10 @@ describe('worker flow with real server', () => {
     fireEvent.change(within(dialog).getByPlaceholderText('e.g. Alice'), {
       target: { value: 'CustomAgent' },
     })
+    await waitFor(() => {
+      expect(within(dialog).queryByTestId('agent-radio-generic')).toBeInTheDocument()
+    })
+    fireEvent.click(within(dialog).getByTestId('agent-radio-generic'))
     fireEvent.click(within(dialog).getByText('Startup command'))
     fireEvent.change(within(dialog).getByRole('textbox', { name: 'Startup command' }), {
       target: { value: 'bash -c "echo custom worker; sleep 60"' },
@@ -334,6 +341,50 @@ describe('worker flow with real server', () => {
         interactiveCommand: 'bash',
         presetAugmentationDisabled: true,
         sessionIdCapture: null,
+      })
+    )
+  })
+
+  test('Add Worker dialog keeps selected CLI semantics for startup aliases', async () => {
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: /Add Member/ }).length).toBeGreaterThan(0)
+    })
+    fireEvent.click(screen.getAllByRole('button', { name: /Add Member/ })[0] as HTMLElement)
+
+    const dialog = await screen.findByRole('form', { name: 'Add team member' })
+    fireEvent.change(within(dialog).getByPlaceholderText('e.g. Alice'), {
+      target: { value: 'ClaudeAlias' },
+    })
+    await waitFor(() => {
+      expect(within(dialog).queryByTestId('agent-radio-claude')).toBeInTheDocument()
+    })
+    fireEvent.click(within(dialog).getByTestId('agent-radio-claude'))
+    fireEvent.click(within(dialog).getByText('Startup command'))
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Startup command' }), {
+      target: { value: 'ccs --continue' },
+    })
+    fireEvent.click(within(dialog).getByTestId('add-worker-submit'))
+
+    await waitFor(
+      () => {
+        expect(screen.queryByRole('form', { name: 'Add team member' })).toBeNull()
+      },
+      { timeout: WORKER_FLOW_TIMEOUT_MS }
+    )
+
+    const worker = serverContext?.store
+      .getWorkspaceSnapshot(workspaceId)
+      .agents.find((agent) => agent.name === 'ClaudeAlias')
+    expect(worker?.id).toEqual(expect.any(String))
+    expect(serverContext?.store.peekAgentLaunchConfig(workspaceId, worker?.id ?? '')).toEqual(
+      expect.objectContaining({
+        args: expect.arrayContaining(['ccs --continue']),
+        commandPresetId: null,
+        interactiveCommand: 'claude',
+        presetAugmentationDisabled: true,
+        sessionIdCapture: expect.objectContaining({ source: 'claude_project_jsonl_dir' }),
       })
     )
   })
@@ -364,12 +415,15 @@ describe('worker flow with real server', () => {
     )
     fireEvent.click(card)
 
-    const modal = await screen.findByRole('dialog', { name: 'Immediate' })
-    expect(within(modal).queryByTestId('worker-start-empty')).toBeNull()
-    expect(document.querySelector('[id^="worker-pty-"]')).not.toBeNull()
+    const modal = await screen.findByTestId('worker-modal')
+    expect(within(modal).getByTestId('worker-modal-terminal-slot')).toBeInTheDocument()
+    expect(screen.queryByTestId('terminal-bottom-panel')).toBeNull()
+    await waitFor(() => {
+      expect(document.querySelector('[id^="worker-pty-"]')).not.toBeNull()
+    })
   })
 
-  test('stopped worker can be started from the detail modal after reload', async () => {
+  test('stopped worker can be started from the worker detail modal after reload', async () => {
     const response = await nativeFetch(
       `${serverContext?.baseUrl}/api/workspaces/${workspaceId}/workers`,
       {
@@ -392,9 +446,9 @@ describe('worker flow with real server', () => {
     expect(within(card).getByText('stopped')).toBeInTheDocument()
     fireEvent.click(card)
 
-    const modal = await screen.findByRole('dialog', { name: 'Bob' })
-    expect(within(modal).getByText(/PTY stopped|not started/)).toBeInTheDocument()
-    fireEvent.click(within(modal).getAllByRole('button', { name: /Start/ })[0] as HTMLElement)
+    const modal = await screen.findByTestId('worker-modal')
+    expect(screen.queryByTestId('terminal-bottom-panel')).toBeNull()
+    fireEvent.click(within(modal).getByTestId('worker-start-empty'))
 
     await waitFor(() => {
       expect(document.querySelector('[id^="worker-pty-"]')).not.toBeNull()

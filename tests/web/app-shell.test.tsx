@@ -65,8 +65,7 @@ describe('app shell with real server', () => {
     expect(banner).toHaveClass('h-11')
     expect(banner.textContent ?? '').toContain('Hive')
     // Empty state hides Topbar actions so first-run users only see the brand
-    // and the central Welcome CTA. Blueprint remains dormant even after a
-    // workspace is active; the drawer itself stays covered in task tests.
+    // and the central Welcome CTA.
     expect(screen.queryByTestId('topbar-settings')).toBeNull()
     expect(screen.queryByTestId('topbar-blueprint')).toBeNull()
 
@@ -143,21 +142,22 @@ describe('app shell with real server', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(/failed to create workspace/i)
   }, 20000)
 
-  test('init failure surfaces error toast and disables Add Workspace CTA', async () => {
+  test('init failure surfaces error toast and swaps the workspace area for the runtime-offline page', async () => {
     // Override the per-test fetch stub from beforeEach with a hard-rejecting
     // one so bootstrap fails on the first call.
     vi.stubGlobal('fetch', () => Promise.reject(new Error('ECONNREFUSED')))
     render(<App />)
-    // Toast surfaces the failure.
+    // Toast surfaces the failure (mid-session error path remains intact).
     await waitFor(() => {
       expect(screen.getByTestId('toast')).toHaveTextContent(/could not reach hive runtime/i)
     })
-    // WelcomePane Add Workspace CTA becomes disabled so the user cannot
-    // trigger a create flow that will fail against an unreachable runtime.
-    expect(screen.getByTestId('welcome-pane-add')).toBeDisabled()
-    expect(screen.getByTestId('welcome-pane-disabled-reason')).toHaveTextContent(
-      /could not reach hive runtime/i
-    )
+    // Workspace area is replaced by the offline page, which exposes a retry
+    // affordance the auto-reconnect timer also drives.
+    expect(screen.getByTestId('runtime-offline-page')).toBeInTheDocument()
+    expect(screen.getByTestId('runtime-offline-retry')).toBeInTheDocument()
+    // WelcomePane never renders in this state — the user shouldn't see a
+    // disabled "Add Workspace" button when the daemon is plainly missing.
+    expect(screen.queryByTestId('welcome-pane-add')).toBeNull()
   })
 
   test('workspace sidebar can be resized from its right edge', async () => {

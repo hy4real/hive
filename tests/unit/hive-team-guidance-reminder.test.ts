@@ -15,6 +15,7 @@ describe('ORCHESTRATOR_REMINDER_TAIL', () => {
   test('names the role and the exact dispatch verb so a post-/compact agent can re-anchor', () => {
     expect(ORCHESTRATOR_REMINDER_TAIL).toContain('Hive Orchestrator')
     expect(ORCHESTRATOR_REMINDER_TAIL).toContain('team send "<worker-name>" "<task>"')
+    expect(ORCHESTRATOR_REMINDER_TAIL).toContain('team cancel --dispatch <id> "<reason>"')
   })
 
   test('forbids the CLI built-in subagent escape hatch', () => {
@@ -61,6 +62,7 @@ describe('buildProtocolDoc', () => {
     expect(doc).toContain('## Worker rules')
     expect(doc).toContain('## `team` CLI — orchestrator')
     expect(doc).toContain('## `team` CLI — worker')
+    expect(doc).toContain('team cancel --dispatch <id> "<reason>"')
   })
 
   test('mentions the .hive/PROTOCOL.md cat-recover path explicitly', () => {

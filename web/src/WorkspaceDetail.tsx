@@ -1,15 +1,24 @@
 import { useEffect, useState } from 'react'
 
 import type { TeamListItem, WorkspaceSummary } from '../../src/shared/types.js'
-import { type OrchestratorStartResult, renameWorker, type TerminalRunSummary } from './api.js'
+import {
+  isWorkspaceShellRun,
+  type OrchestratorStartResult,
+  renameWorker,
+  type TerminalRunSummary,
+} from './api.js'
 import { useI18n } from './i18n.js'
 import { WorkspaceNotifications } from './notifications/WorkspaceNotifications.js'
+import { TerminalBottomPanel } from './terminal/TerminalBottomPanel.js'
+import { useTerminalPanelTabs } from './terminal/useTerminalPanelTabs.js'
 import { findRunByAgentId } from './terminal/useTerminalRuns.js'
+import { useWorkspaceShellLauncher } from './terminal/useWorkspaceShellLauncher.js'
 import { useToast } from './ui/useToast.js'
 import { usePaneSplit } from './usePaneSplit.js'
 import { AddWorkerDialog } from './worker/AddWorkerDialog.js'
 import { OrchestratorPane } from './worker/OrchestratorPane.js'
 import { useOrchestratorPaneState } from './worker/useOrchestratorPaneState.js'
+import type { WorkerActions } from './worker/useWorkerActions.js'
 import { useWorkerComposer } from './worker/useWorkerComposer.js'
 import { WelcomePane } from './worker/WelcomePane.js'
 import { WorkerModal } from './worker/WorkerModal.js'
@@ -22,6 +31,8 @@ type WorkspaceDetailProps = {
   onStartWorker: (workerId: string) => Promise<{ error: string | null; runId: string | null }>
   onOrchestratorResult: (workspaceId: string, result: OrchestratorStartResult) => void
   onRequestAddWorkspace: () => void
+  onShellRunClosed?: (workspaceId: string, runId: string) => void
+  onShellRunStarted?: (workspaceId: string, run: TerminalRunSummary) => void
   onTryDemo?: () => void
   welcomeDisabledReason?: string
   orchestratorAutostartError: string | null
@@ -38,6 +49,8 @@ export const WorkspaceDetail = ({
   onStartWorker,
   onOrchestratorResult,
   onRequestAddWorkspace,
+  onShellRunClosed,
+  onShellRunStarted,
   onTryDemo,
   welcomeDisabledReason,
   orchestratorAutostartError,
@@ -52,35 +65,9 @@ export const WorkspaceDetail = ({
   const [deleteWorkerError, setDeleteWorkerError] = useState<string | null>(null)
   const [startWorkerError, setStartWorkerError] = useState<string | null>(null)
   const [startingWorkerId, setStartingWorkerId] = useState<string | null>(null)
+  const [terminalPanelHidden, setTerminalPanelHidden] = useState(false)
   const toast = useToast()
-  // Always derive the modal's worker from the latest workers prop so the
-  // 500ms poll keeps it fresh — we never freeze a stale snapshot.
-  const activeWorker: TeamListItem | null =
-    workers.find((worker) => worker.id === activeWorkerId) ?? null
-  // If the worker disappears (delete / workspace switch), close the modal.
-  useEffect(() => {
-    if (activeWorkerId && !activeWorker) setActiveWorkerId(null)
-  }, [activeWorkerId, activeWorker])
   const composer = useWorkerComposer({ createWorker: onCreateWorker, open: composerOpen })
-
-  // Surface composer / delete errors as toasts instead of inline alert bands.
-  useEffect(() => {
-    if (composer.createWorkerError)
-      toast.show({ kind: 'error', message: composer.createWorkerError })
-  }, [composer.createWorkerError, toast])
-
-  useEffect(() => {
-    if (deleteWorkerError) toast.show({ kind: 'error', message: deleteWorkerError })
-  }, [deleteWorkerError, toast])
-
-  // B2: when the user switches workspace, clear local error state so we don't
-  // surface a stale error from the previous workspace as a fresh toast.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: effect intentionally fires only on workspace switch
-  useEffect(() => {
-    setDeleteWorkerError(null)
-    setStartWorkerError(null)
-    setStartingWorkerId(null)
-  }, [workspace?.id])
   const orchestrator = useOrchestratorPaneState({
     workspaceId: workspace?.id ?? '',
     terminalRuns,
@@ -94,6 +81,62 @@ export const WorkspaceDetail = ({
     },
   })
   const split = usePaneSplit()
+  const activeWorker: TeamListItem | null =
+    workers.find((worker) => worker.id === activeWorkerId) ?? null
+  useEffect(() => {
+    if (activeWorkerId && !activeWorker) setActiveWorkerId(null)
+  }, [activeWorkerId, activeWorker])
+  const panelTabs = useTerminalPanelTabs({
+    workspaceId: workspace?.id ?? '',
+    workers,
+    terminalRuns,
+  })
+  const shellPanelTabs = panelTabs.tabs.filter((tab) => tab.kind === 'shell')
+  const shellRuns = workspace
+    ? terminalRuns.filter((run) => isWorkspaceShellRun(run, workspace.id))
+    : []
+  const { closeShellTab, openShell, shellError, shellStarting, startNewShell } =
+    useWorkspaceShellLauncher({
+      onCloseFailed: (message) =>
+        toast.show({ kind: 'error', message: t('shellTerminal.closeFailed', { message }) }),
+      onShellRunClosed,
+      onShellRunStarted,
+      panelTabs,
+      shellRuns,
+      workspaceId: workspace?.id ?? null,
+    })
+
+  // Surface composer / delete errors as toasts instead of inline alert bands.
+  useEffect(() => {
+    if (composer.createWorkerError)
+      toast.show({ kind: 'error', message: composer.createWorkerError })
+  }, [composer.createWorkerError, toast])
+
+  useEffect(() => {
+    if (deleteWorkerError) toast.show({ kind: 'error', message: deleteWorkerError })
+  }, [deleteWorkerError, toast])
+
+  // Start failures no longer have a modal banner to display them — surface
+  // via toast to keep parity with delete-error feedback.
+  useEffect(() => {
+    if (startWorkerError) toast.show({ kind: 'error', message: startWorkerError })
+  }, [startWorkerError, toast])
+
+  // Shell-start failures no longer have a dialog banner — surface via toast.
+  useEffect(() => {
+    if (shellError) toast.show({ kind: 'error', message: shellError })
+  }, [shellError, toast])
+
+  // B2: when the user switches workspace, clear local error state so we don't
+  // surface a stale error from the previous workspace as a fresh toast.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: effect intentionally fires only on workspace switch
+  useEffect(() => {
+    setActiveWorkerId(null)
+    setDeleteWorkerError(null)
+    setStartWorkerError(null)
+    setStartingWorkerId(null)
+    setTerminalPanelHidden(false)
+  }, [workspace?.id])
 
   if (!workspace) {
     const welcomeProps: {
@@ -149,6 +192,14 @@ export const WorkspaceDetail = ({
   }
 
   const orchWidth = `${(split.orchPct * 100).toFixed(2)}%`
+  const openShellTerminal = () => {
+    setTerminalPanelHidden(false)
+    openShell()
+  }
+  const startNewShellFromPanel = () => {
+    setTerminalPanelHidden(false)
+    startNewShell()
+  }
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col" style={{ background: 'var(--bg-2)' }}>
@@ -163,7 +214,6 @@ export const WorkspaceDetail = ({
             state={orchestrator.state}
             onStop={orchestrator.stop}
             onRemoveWorkspace={() => {
-              if (!workspace) return
               void onDeleteWorkspace(workspace).catch((error: unknown) => {
                 const message = error instanceof Error ? error.message : String(error)
                 toast.show({ kind: 'error', message: `Delete failed: ${message}` })
@@ -189,16 +239,41 @@ export const WorkspaceDetail = ({
           onPointerDown={split.beginDrag}
           onKeyDown={split.onKeyDown}
         />
-        <WorkersPane
-          onAddWorkerClick={() => setComposerOpen(true)}
-          onDeleteWorker={handleDeleteWorker}
-          onOpenWorker={(worker) => setActiveWorkerId(worker.id)}
-          onRenameWorker={handleRenameWorker}
-          onStartWorker={handleStartWorker}
-          startingWorkerId={startingWorkerId}
-          terminalRuns={terminalRuns}
-          workers={workers}
-        />
+        <div className="relative flex min-w-0 flex-1 flex-col">
+          <WorkersPane
+            onAddWorkerClick={() => setComposerOpen(true)}
+            onDeleteWorker={handleDeleteWorker}
+            onOpenShellTerminal={openShellTerminal}
+            onOpenWorker={(worker) => setActiveWorkerId(worker.id)}
+            onRenameWorker={handleRenameWorker}
+            onStartWorker={handleStartWorker}
+            startingWorkerId={startingWorkerId}
+            terminalRuns={terminalRuns}
+            workers={workers}
+          />
+          {terminalPanelHidden ? null : (
+            <TerminalBottomPanel
+              tabs={shellPanelTabs}
+              activeId={panelTabs.activeId}
+              scopeKey={workspace.id}
+              onSelect={panelTabs.setActive}
+              onClose={(tabId) => {
+                if (tabId.startsWith('shell:')) {
+                  closeShellTab(tabId.slice('shell:'.length))
+                }
+                panelTabs.closeTab(tabId)
+              }}
+              onClosePanel={() => setTerminalPanelHidden(true)}
+              onNewShell={startNewShellFromPanel}
+              newShellPending={shellStarting}
+              onStartWorker={(workerId) => {
+                const worker = workers.find((w) => w.id === workerId)
+                if (worker) handleStartWorker(worker)
+              }}
+              startingWorkerId={startingWorkerId}
+            />
+          )}
+        </div>
       </div>
       {activeWorker ? (
         <WorkerModal
@@ -210,24 +285,29 @@ export const WorkspaceDetail = ({
           worker={activeWorker}
         />
       ) : null}
-
       {composerOpen ? (
         <AddWorkerDialog
           commandPresets={composer.commandPresets}
           commandPresetId={composer.commandPresetId}
           creating={composer.creating}
+          customTemplates={composer.customTemplates}
           onClose={() => setComposerOpen(false)}
+          onDeleteTemplate={composer.deleteTemplate}
           onNameChange={composer.setWorkerName}
           onPresetChange={composer.setCommandPresetId}
           onRandomName={composer.randomizeWorkerName}
           onRoleDescriptionChange={composer.setRoleDescription}
           onRoleDescriptionReset={composer.resetRoleDescription}
           onRoleChange={composer.setWorkerRole}
+          onSaveAsTemplate={composer.saveAsTemplate}
           onSubmit={(event) => composer.submit(event, () => setComposerOpen(false))}
           onStartupCommandChange={composer.setStartupCommand}
+          onTemplateChange={composer.selectTemplate}
           roleDescription={composer.roleDescription}
           roleDescriptionDefault={composer.roleDescriptionDefault}
+          selectedTemplateId={composer.selectedTemplateId}
           startupCommand={composer.startupCommand}
+          templateBusy={composer.templateBusy}
           workerName={composer.workerName}
           workerRole={composer.workerRole}
         />

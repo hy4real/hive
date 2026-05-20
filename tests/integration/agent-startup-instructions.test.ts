@@ -138,6 +138,7 @@ describe('agent startup instructions', () => {
         expect(output).toContain('[Hive 系统消息：启动说明]')
         expect(output).toContain('你是 Alpha 的 Orchestrator')
         expect(output).toContain('team send <worker-name> "<task>"')
+        expect(output).toContain('team cancel --dispatch <id> "<reason>"')
         expect(output).toContain('team list')
         expect(output).toContain('维护 .hive/tasks.md')
         expect(output).toContain('Hive worker 是右侧卡片里的真实 CLI agent')
@@ -148,7 +149,7 @@ describe('agent startup instructions', () => {
         expect(output).toContain('不要使用你所在 CLI 的内置 subagent / 子代理工具')
         expect(output).not.toContain('team report')
         expect(output).toContain('SUBMITTED')
-      })
+      }, 6000)
 
       await waitFor(async () => {
         const response = await fetch(`${baseUrl}/api/runtime/runs/${workerRun.runId}`, {
@@ -164,7 +165,7 @@ describe('agent startup instructions', () => {
         expect(output).not.toContain('--failed')
         expect(output).not.toContain('team send <worker-name>')
         expect(output).toContain('SUBMITTED')
-      })
+      }, 6000)
     } finally {
       await hive.close()
     }

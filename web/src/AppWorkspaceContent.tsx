@@ -13,6 +13,8 @@ type AppWorkspaceContentProps = {
   onDeleteWorkspace: (workspace: WorkspaceSummary) => Promise<void>
   onExitDemo: () => void
   onRequestAddWorkspace: () => void
+  onShellRunClosed: (workspaceId: string, runId: string) => void
+  onShellRunStarted: (workspaceId: string, run: TerminalRunSummary) => void
   onTryDemo: () => void
   optimisticRunsByWorkspaceId: Record<string, TerminalRunSummary[]>
   orchestratorAutostartErrors: Record<string, string | null>
@@ -31,6 +33,8 @@ export const AppWorkspaceContent = ({
   onDeleteWorkspace,
   onExitDemo,
   onRequestAddWorkspace,
+  onShellRunClosed,
+  onShellRunStarted,
   onTryDemo,
   optimisticRunsByWorkspaceId,
   orchestratorAutostartErrors,
@@ -58,6 +62,8 @@ export const AppWorkspaceContent = ({
         onStartWorker={workerActions.startWorker}
         onOrchestratorResult={recordOrchestratorResult}
         onRequestAddWorkspace={onRequestAddWorkspace}
+        onShellRunClosed={onShellRunClosed}
+        onShellRunStarted={onShellRunStarted}
         onTryDemo={onTryDemo}
         welcomeDisabledReason={bootstrapError ?? undefined}
         orchestratorAutostartError={

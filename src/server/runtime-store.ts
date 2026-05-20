@@ -8,6 +8,7 @@ import type { PtyOutputBus } from './pty-output-bus.js'
 import { createRuntimeStoreLifecycle, createRuntimeStoreServices } from './runtime-store-helpers.js'
 import type { SettingsStore } from './settings-store.js'
 import type {
+  CancelTaskInput,
   DispatchTaskInput,
   ReportTaskInput,
   ReportTaskResult,
@@ -38,6 +39,7 @@ interface RuntimeStore {
   ) => Promise<DispatchRecord>
   reportTask: (workspaceId: string, workerId: string, input?: ReportTaskInput) => ReportTaskResult
   statusTask: (workspaceId: string, workerId: string, input?: StatusTaskInput) => ReportTaskResult
+  cancelTask: (workspaceId: string, dispatchId: string, input: CancelTaskInput) => ReportTaskResult
   listDispatches: (workspaceId: string, options?: ListDispatchesOptions) => DispatchRecord[]
   listWorkers: (workspaceId: string) => TeamListItem[]
   getLastPtyLineForAgent: (workspaceId: string, agentId: string) => string | null
@@ -51,6 +53,8 @@ interface RuntimeStore {
     run_id: string
     status: string
   }>
+  closeWorkspaceShell: (workspaceId: string, runId: string) => boolean
+  startWorkspaceShell: (workspaceId: string) => Promise<LiveAgentRun>
   configureAgentLaunch: (
     workspaceId: string,
     agentId: string,
@@ -125,6 +129,7 @@ export const createRuntimeStore = (options: RuntimeStoreOptions = {}): RuntimeSt
     listWorkspaces: () => services.workspaceStore.listWorkspaces(),
     deleteWorkspace: async (workspaceId) => {
       const workspace = services.workspaceStore.getWorkspaceSnapshot(workspaceId)
+      lifecycle.deleteWorkspaceShell(workspaceId)
       for (const agent of workspace.agents) {
         const activeRun = services.agentRuntime.getActiveRunByAgentId(workspaceId, agent.id)
         if (activeRun) services.agentRuntime.stopAgentRun(activeRun.runId)
@@ -152,6 +157,7 @@ export const createRuntimeStore = (options: RuntimeStoreOptions = {}): RuntimeSt
       })
     },
     recordUserInput: services.teamOps.recordUserInput,
+    cancelTask: services.teamOps.cancelTask,
     dispatchTask: services.teamOps.dispatchTask,
     dispatchTaskByWorkerName: services.teamOps.dispatchTaskByWorkerName,
     reportTask: services.teamOps.reportTask,
@@ -166,12 +172,14 @@ export const createRuntimeStore = (options: RuntimeStoreOptions = {}): RuntimeSt
     getAgent: (workspaceId, agentId) => services.workspaceStore.getAgent(workspaceId, agentId),
     getPtyOutputBus: lifecycle.getPtyOutputBus,
     listTerminalRuns: lifecycle.listTerminalRuns,
+    closeWorkspaceShell: lifecycle.closeWorkspaceShell,
     configureAgentLaunch: lifecycle.configureAgentLaunch,
     peekAgentLaunchConfig: lifecycle.peekAgentLaunchConfig,
     startAgent: lifecycle.startAgent,
     autostartConfiguredAgents: lifecycle.autostartConfiguredAgents,
     startWorkspaceWatch: lifecycle.startWorkspaceWatch,
-    getLiveRun: (runId) => services.agentRuntime.getLiveRun(runId),
+    startWorkspaceShell: lifecycle.startWorkspaceShell,
+    getLiveRun: lifecycle.getLiveRun,
     getActiveRunByAgentId: (workspaceId, agentId) =>
       services.agentRuntime.getActiveRunByAgentId(workspaceId, agentId),
     registerTasksListener: lifecycle.registerTasksListener,
@@ -179,13 +187,13 @@ export const createRuntimeStore = (options: RuntimeStoreOptions = {}): RuntimeSt
     listMessagesForRecovery: (workspaceId, sinceMs) =>
       services.messageLogStore.listMessagesForRecovery(workspaceId, sinceMs),
     peekAgentToken: (agentId) => services.agentRuntime.peekAgentToken(agentId),
-    pauseTerminalRun: (runId) => services.agentRuntime.pauseRun(runId),
-    resizeAgentRun: (runId, cols, rows) => services.agentRuntime.resizeAgentRun(runId, cols, rows),
-    resumeTerminalRun: (runId) => services.agentRuntime.resumeRun(runId),
+    pauseTerminalRun: lifecycle.pauseTerminalRun,
+    resizeAgentRun: lifecycle.resizeTerminalRun,
+    resumeTerminalRun: lifecycle.resumeTerminalRun,
     settings: services.settings,
     writeRunInput: lifecycle.writeRunInput,
     getUiToken: () => services.uiAuth.getToken(),
-    stopAgentRun: (runId) => services.agentRuntime.stopAgentRun(runId),
+    stopAgentRun: lifecycle.stopTerminalRun,
     validateAgentToken: (agentId, token) =>
       services.agentRuntime.validateAgentToken(agentId, token),
     validateUiToken: (token) => services.uiAuth.validate(token),

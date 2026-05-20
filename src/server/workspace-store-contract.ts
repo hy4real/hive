@@ -27,5 +27,6 @@ export interface WorkspaceStore {
   markAgentStarted: (workspaceId: string, agentId: string) => void
   markAgentStopped: (workspaceId: string, agentId: string) => void
   markTaskDispatched: (workspaceId: string, workerId: string) => void
+  markTaskCancelled: (workspaceId: string, workerId: string) => void
   markTaskReported: (workspaceId: string, workerId: string) => void
 }

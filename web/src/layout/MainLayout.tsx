@@ -11,10 +11,22 @@ import {
 type MainLayoutProps = {
   children: ReactNode
   hideTopbarActions?: boolean
+  onToggleTaskGraph?: () => void
+  openTaskCount?: number
   sidebar: ReactNode
+  taskGraphOpen?: boolean
+  topbarActions?: ReactNode
 }
 
-export const MainLayout = ({ children, hideTopbarActions = false, sidebar }: MainLayoutProps) => {
+export const MainLayout = ({
+  children,
+  hideTopbarActions = false,
+  onToggleTaskGraph,
+  openTaskCount = 0,
+  sidebar,
+  taskGraphOpen = false,
+  topbarActions,
+}: MainLayoutProps) => {
   const { t } = useI18n()
   const sidebarResize = useWorkspaceSidebarResize()
 
@@ -23,7 +35,13 @@ export const MainLayout = ({ children, hideTopbarActions = false, sidebar }: Mai
       className="flex h-screen w-full flex-col overflow-hidden"
       style={{ background: 'var(--bg-0)', color: 'var(--text-primary)' }}
     >
-      <Topbar hideActions={hideTopbarActions} />
+      <Topbar
+        actions={topbarActions}
+        hideActions={hideTopbarActions}
+        onToggleTaskGraph={onToggleTaskGraph}
+        openTaskCount={openTaskCount}
+        taskGraphOpen={taskGraphOpen}
+      />
       <div className="flex min-h-0 flex-1">
         <aside
           aria-label={t('layout.sidebarAria')}

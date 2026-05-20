@@ -21,6 +21,7 @@ const TEAM_USAGE = [
   'Usage:',
   '  team list',
   '  team send <worker-name> "<task>"',
+  '  team cancel --dispatch <dispatch-id> "<reason>"',
   '  team report "<result>" [--dispatch <dispatch-id>] [--artifact <path>]',
   '  team report --stdin [--dispatch <dispatch-id>] [--artifact <path>]',
   '  team status "<current status>" [--artifact <path>]',
@@ -113,9 +114,15 @@ interface TeamReportResponse {
   ok: true
 }
 
+interface ParsedCancelArgs {
+  dispatchId: string
+  reason: string
+}
+
 const REPORT_USAGE =
   'Usage: team report (<result> | --stdin) [--dispatch <dispatch-id>] [--artifact <path>]'
 const STATUS_USAGE = 'Usage: team status (<current status> | --stdin) [--artifact <path>]'
+const CANCEL_USAGE = 'Usage: team cancel --dispatch <dispatch-id> <reason>'
 
 const usageFor = (command: string) => (command === 'status' ? STATUS_USAGE : REPORT_USAGE)
 
@@ -209,6 +216,46 @@ export const parseReportArgs = (args: string[], command = 'report'): ParsedRepor
   return { result: useStdin ? null : (positionals[0] ?? null), artifacts, dispatchId, useStdin }
 }
 
+export const parseCancelArgs = (args: string[]): ParsedCancelArgs => {
+  const positionals: string[] = []
+  let dispatchId: string | undefined
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index]
+    if (arg === undefined) continue
+
+    if (arg === '--dispatch') {
+      const next = args[index + 1]
+      if (next === undefined || next.startsWith('--')) {
+        throw new Error(`--dispatch requires a value\n\n${CANCEL_USAGE}`)
+      }
+      dispatchId = next
+      index += 1
+      continue
+    }
+
+    if (arg.startsWith('--')) {
+      throw new Error(`Unknown argument: ${arg}\n\n${CANCEL_USAGE}`)
+    }
+
+    positionals.push(arg)
+  }
+
+  if (!dispatchId) {
+    throw new Error(`Missing --dispatch <dispatch-id>\n\n${CANCEL_USAGE}`)
+  }
+  if (positionals.length === 0) {
+    throw new Error(`Missing <reason>\n\n${CANCEL_USAGE}`)
+  }
+
+  const reason = positionals.join(' ').trim()
+  if (!reason) {
+    throw new Error(`Missing <reason>\n\n${CANCEL_USAGE}`)
+  }
+
+  return { dispatchId, reason }
+}
+
 export const readStdinToString = async (command = 'report'): Promise<string> => {
   if (process.stdin.isTTY) {
     throw new Error(
@@ -274,6 +321,20 @@ export const runTeamCommand = async (argv: string[]) => {
       text: task,
     })
     console.log(JSON.stringify(await response.json()))
+    return
+  }
+
+  if (command === 'cancel') {
+    const cancel = parseCancelArgs(args)
+    const env = getHiveEnv()
+    const baseUrl = getBaseUrl(env)
+    await postJson(baseUrl, '/api/team/cancel', {
+      dispatch_id: cancel.dispatchId,
+      project_id: env.HIVE_PROJECT_ID,
+      from_agent_id: env.HIVE_AGENT_ID,
+      token: env.HIVE_AGENT_TOKEN,
+      reason: cancel.reason,
+    })
     return
   }
 

@@ -1,4 +1,4 @@
-import { UserPlus } from 'lucide-react'
+import { Terminal, UserPlus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 import type { TeamListItem } from '../../../src/shared/types.js'
@@ -14,9 +14,11 @@ import { presentWorkerStatus, type WorkerStatusKind } from './worker-status.js'
 type WorkersPaneProps = {
   onAddWorkerClick: () => void
   onDeleteWorker: (worker: TeamListItem) => void
+  onOpenShellTerminal: () => void
   onOpenWorker: (worker: TeamListItem) => void
   onRenameWorker: (worker: TeamListItem, newName: string) => Promise<{ error: string | null }>
   onStartWorker: (worker: TeamListItem) => void
+  shellTerminalAvailable?: boolean
   startingWorkerId: string | null
   terminalRuns: TerminalRunSummary[]
   workers: TeamListItem[]
@@ -47,9 +49,11 @@ const groupByWorkerStatus = (workers: TeamListItem[]) => {
 export const WorkersPane = ({
   onAddWorkerClick,
   onDeleteWorker,
+  onOpenShellTerminal,
   onOpenWorker,
   onRenameWorker,
   onStartWorker,
+  shellTerminalAvailable = true,
   startingWorkerId,
   terminalRuns,
   workers,
@@ -108,6 +112,17 @@ export const WorkersPane = ({
           <span className="font-medium text-pri">{t('worker.teamMembers')}</span>
           <span className="mono rounded bg-3 px-1.5 py-0.5 text-xs text-sec">{workers.length}</span>
           <div className="flex-1" />
+          {shellTerminalAvailable ? (
+            <button
+              type="button"
+              onClick={onOpenShellTerminal}
+              className="icon-btn icon-btn--tertiary"
+              aria-label={t('shellTerminal.openAria')}
+              data-testid="open-workspace-shell"
+            >
+              <Terminal size={14} aria-hidden /> {t('shellTerminal.open')}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={onAddWorkerClick}

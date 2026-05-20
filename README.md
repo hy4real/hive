@@ -25,8 +25,6 @@
 
 > Hive 是本机优先的工具，只监听 `127.0.0.1`，面向已经在用 CLI Agent 的人。最新稳定版本见 [npm](https://www.npmjs.com/package/@tt-a1i/hive)，上面的 badge 会指向它。
 
-> 版本说明：这个公开仓库保留 Hive 的基础公开源码线。npm 上的最新稳定包可能由私有发布线构建，包含尚未公开到本仓库的产品能力。公开仓库的 `CHANGELOG.md` 只记录公开源码线的变更；安装和更新请始终以 npm 包为准。
-
 ## 为什么需要 Hive
 
 CLI Agent 各自都很强，但同时管几个就有点别扭：
@@ -57,6 +55,22 @@ hive
 ```
 
 打开终端打印出来的本机地址，通常是 `http://127.0.0.1:3000/`。如果你想指定端口，可以用 `hive --port 4010`。
+
+升级到最新版本：
+
+```bash
+hive update
+```
+
+`hive update` 会在原位运行 `npm install -g @tt-a1i/hive@latest`，完事后重启 Hive 就能用上新版。如果当初是用 pnpm / yarn 装的 Hive，请用同一个包管理器升级，避免装出第二份。
+
+把 Hive 装为应用（可选）：
+
+在 Chrome / Edge / Brave 里打开 `http://127.0.0.1:3000/`，点浏览器地址栏右侧的安装图标即可。装好后 Hive 会以独立窗口启动、有自己的 dock 图标，且 dock 右键菜单上会显示 **添加 Workspace** / **试用演示** 两个快捷入口。Firefox 和 Safari 暂未实现 PWA install-prompt 协议，浏览器地址栏的安装图标只在 Chromium 系浏览器里出现。
+
+PWA 只是 UI 壳，Hive 后端仍需要在终端里跑着。如果启动 PWA 时后端没起，会看到 “Hive 后端未启动” 页面，等你跑起 `hive` 后会自动刷新。PWA 的 install scope 按 origin（含端口）划分，所以 `hive --port 4011` 跟 `hive --port 3000` 在浏览器看来是两个独立应用。卸载方法：浏览器地址栏访问 `chrome://apps`，右键 Hive 图标，选 **从 Chrome 中移除…**。
+
+关闭 PWA 窗口或 tab 时 Hive 会主动请求浏览器弹原生确认对话框，避免 Cmd+W 误关丢失会话。但现代浏览器要求你跟页面"交互过"（点击 / 滚动 / 输入）才会真的弹这个对话框——刚打开 PWA 立刻按 Cmd+W 仍会直接关闭，这是浏览器策略，不是 Hive 的 bug。
 
 首次使用流程：
 
