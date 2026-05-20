@@ -176,6 +176,41 @@ describe('team cli with real server', () => {
     )
   })
 
+  test('team cancel --dispatch closes the selected dispatch', async () => {
+    if (!serverStore) {
+      throw new Error('Expected test server store')
+    }
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    await runTeamCommand(['send', 'Alice', 'Front-end scan'])
+    const output = logSpy.mock.calls[0]?.[0] ?? ''
+    const parsed = JSON.parse(output) as { dispatch_id: string; ok: true }
+    logSpy.mockRestore()
+
+    await runTeamCommand([
+      'cancel',
+      '--dispatch',
+      parsed.dispatch_id,
+      'Direction changed; front-end scan is no longer needed',
+    ])
+
+    const workspaceId = process.env.HIVE_PROJECT_ID
+    if (!workspaceId) {
+      throw new Error('Expected workspace id')
+    }
+    expect(serverStore.listDispatches(workspaceId)).toEqual([
+      expect.objectContaining({
+        id: parsed.dispatch_id,
+        reportText: 'Direction changed; front-end scan is no longer needed',
+        status: 'cancelled',
+      }),
+    ])
+    expect(serverStore.getWorker(workspaceId, workerId)).toMatchObject({
+      pendingTaskCount: 0,
+      status: 'idle',
+    })
+  })
+
   test('team send joins unquoted task words instead of silently truncating', async () => {
     if (!serverStore) {
       throw new Error('Expected test server store')

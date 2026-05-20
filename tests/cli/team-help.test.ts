@@ -20,6 +20,7 @@ describe('team cli help', () => {
     expect(output).toContain('Usage:')
     expect(output).toContain('team list')
     expect(output).toContain('team send <worker-name> "<task>"')
+    expect(output).toContain('team cancel --dispatch <dispatch-id> "<reason>"')
     expect(output).toContain('team report "<result>"')
     expect(output).toContain('team status "<current status>"')
     expect(output).not.toContain('--success')
