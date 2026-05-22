@@ -2,6 +2,33 @@
 
 All notable user-facing changes will be documented in this file.
 
+## 1.4.0 - 2026-05-22
+
+Protocol hardening, recovery completeness, and broader CLI support.
+
+- Adds `--artifact <path>` to `team report` and `team status` so workers can
+  hand off durable files (plans, reports, test evidence) alongside their text
+  replies. Artifacts are stored in the dispatch ledger and surfaced in the
+  protocol documentation.
+- Ships a plan-dev-test workflow recipe in the auto-generated `.hive/PROTOCOL.md`
+  that teaches agents the `.hive/runs/<task-id>/` handoff convention, same-agent
+  reuse, and a 3-fix-loop cap before escalating to human review.
+- Separates agent permission identity from template identity. A new `kind` field
+  (`orchestrator` | `member`) on `AgentSummary` replaces the old `role`-based
+  authorization check. UI terminology shifts from "Role" to "Template" throughout
+  the Add Worker flow, worker cards, and notifications.
+- Injects an environment-sync message after Layer A session resume (CLI-native
+  `--resume`). Resumed agents now see current workers, their status, and the
+  head of `.hive/tasks.md` so they can reorient without re-reading the full
+  conversation history.
+- Adds **Pi** (`pi`) and **Reasonix** (`reasonix`) as built-in command presets
+  with session capture and resume support. Pi sessions are captured from
+  `~/.pi/agent/sessions/`; Reasonix sessions from `~/.reasonix/sessions/` with
+  workspace-aware `.meta.json` matching. Reasonix auto-injects `/yolo` via stdin
+  after startup since it has no CLI flag for edit-gate bypass.
+- Brings the total built-in CLI presets to six: Claude Code, Codex, OpenCode,
+  Gemini, Pi, and Reasonix.
+
 ## 1.3.4 - 2026-05-21
 
 Terminal performance and Tasks panel polish.
