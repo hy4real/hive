@@ -27,11 +27,13 @@ export const isInteractiveAgentCommand = (command: string) =>
 const getCommandName = (command: string) => basename(command).toLowerCase()
 
 const hasGeminiPromptReady = (output: string) => /\bType your message\b/u.test(output)
+const hasPiPromptReady = (output: string) => /(?:^|[\r\n])>\s/u.test(output)
 
 export const hasInteractivePromptReady = (output: string, command = '') => {
   const commandName = getCommandName(command)
   return (
     /(?:^|[\r\n])\s*[❯›]\s*/u.test(output) ||
+    (commandName === 'pi' && hasPiPromptReady(output)) ||
     (commandName === 'gemini' && hasGeminiPromptReady(output))
   )
 }

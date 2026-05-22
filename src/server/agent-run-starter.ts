@@ -153,7 +153,7 @@ export const createAgentRunStarter =
         if (config.commandPresetId) {
           const preset = getCommandPreset(config.commandPresetId)
           if (preset?.yoloArgsTemplate && preset.yoloArgsTemplate.length === 0) {
-            postStartWriter(run.runId, '/yolo\r')
+            postStartWriter(run.runId, '/mode yolo\r')
           }
         }
         if (
