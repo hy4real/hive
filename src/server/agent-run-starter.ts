@@ -150,6 +150,12 @@ export const createAgentRunStarter =
           workspace,
           writeToRun: postStartWriter,
         })
+        if (config.commandPresetId) {
+          const preset = getCommandPreset(config.commandPresetId)
+          if (preset?.yoloArgsTemplate && preset.yoloArgsTemplate.length === 0) {
+            postStartWriter(run.runId, '/yolo\r')
+          }
+        }
         if (
           !startConfig.resumedSessionId &&
           !injectedRestartMessage &&

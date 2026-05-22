@@ -51,17 +51,23 @@ const hasResumeArgs = (args: string[]) =>
   args[0] === 'resume'
 
 const shouldVerifySessionBeforeResume = (capture: SessionIdCaptureConfig | null | undefined) => {
-  // Claude is a cheap project-dir existence check; OpenCode is a direct DB query.
-  // Codex/Gemini require broad session-store scans, so trust the persisted id and
+  // Claude and Pi are cheap project-dir existence checks; OpenCode is a direct DB query.
+  // Codex/Gemini/Reasonix require broad session-store scans, so trust the persisted id and
   // let the CLI fail fast if it is stale.
-  return capture?.source === 'claude_project_jsonl_dir' || capture?.source === 'opencode_session_db'
+  return (
+    capture?.source === 'claude_project_jsonl_dir' ||
+    capture?.source === 'opencode_session_db' ||
+    capture?.source === 'pi_session_jsonl_dir'
+  )
 }
 
 const supportsPresetResume = (capture: SessionIdCaptureConfig | null | undefined) =>
   capture?.source === 'claude_project_jsonl_dir' ||
   capture?.source === 'codex_session_jsonl_dir' ||
   capture?.source === 'gemini_session_json_dir' ||
-  capture?.source === 'opencode_session_db'
+  capture?.source === 'opencode_session_db' ||
+  capture?.source === 'pi_session_jsonl_dir' ||
+  capture?.source === 'reasonix_session_jsonl_dir'
 
 export const withPresetResumeArgs = (
   config: AgentLaunchConfigInput,

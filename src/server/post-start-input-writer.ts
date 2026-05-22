@@ -2,7 +2,7 @@ import { basename } from 'node:path'
 
 import type { AgentManager } from './agent-manager.js'
 
-const INTERACTIVE_COMMANDS = new Set(['claude', 'codex', 'gemini', 'opencode'])
+const INTERACTIVE_COMMANDS = new Set(['claude', 'codex', 'gemini', 'opencode', 'pi', 'reasonix'])
 const READY_CHECK_INTERVAL_MS = 50
 const READY_TIMEOUT_MS = 3000
 const MIN_SUBMIT_AFTER_PASTE_DELAY_MS = 600

@@ -16,6 +16,28 @@ const GEMINI_DEFAULT_YOLO_ARGS = ['--yolo']
 
 export const BUILTIN_COMMAND_PRESETS: BuiltinCommandPresetDefaults[] = [
   {
+    command: 'pi',
+    displayName: 'Pi',
+    id: 'pi',
+    resumeArgsTemplate: '--session {session_id}',
+    sessionIdCapture: {
+      pattern: '~/.pi/agent/sessions/{encoded_cwd}/*.jsonl',
+      source: 'pi_session_jsonl_dir',
+    },
+    yoloArgsTemplate: null,
+  },
+  {
+    command: 'reasonix',
+    displayName: 'Reasonix',
+    id: 'reasonix',
+    resumeArgsTemplate: 'code --continue',
+    sessionIdCapture: {
+      pattern: '~/.reasonix/sessions/*.jsonl',
+      source: 'reasonix_session_jsonl_dir',
+    },
+    yoloArgsTemplate: [],
+  },
+  {
     command: 'claude',
     displayName: 'Claude Code (CC)',
     id: 'claude',
