@@ -52,6 +52,7 @@ export const buildWorkerDispatchPayload = (
     '',
     '你必须遵守：',
     `- 完成、失败、阻塞或部分完成后，执行 \`team report "<result>" --dispatch ${dispatchId}\``,
+    `- 如果产出了计划、实现报告、测试报告或经验记录，用 \`team report --stdin --dispatch ${dispatchId} --artifact <path>\` 回传文件路径`,
     '- 不要做无关的事，做完就 report',
     '',
     `dispatch_id: ${dispatchId}`,

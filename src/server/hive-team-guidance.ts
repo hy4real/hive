@@ -28,7 +28,7 @@ export const ORCHESTRATOR_REMINDER_TAIL =
  */
 export const buildWorkerReminderTail = (dispatchId: string) =>
   '<hive-system-reminder>\n' +
-  `You are a Hive Worker. Do not launch nested CLI subagents (Task / Explore / etc.) — finish the task yourself. When the task is done, blocked, or has failed, report with: \`team report "<result>" --dispatch ${dispatchId}\` (or \`team report --stdin --dispatch ${dispatchId}\` for long bodies).\n` +
+  `You are a Hive Worker. Do not launch nested CLI subagents (Task / Explore / etc.) — finish the task yourself. When the task is done, blocked, or has failed, report with: \`team report "<result>" --dispatch ${dispatchId}\` (or \`team report --stdin --dispatch ${dispatchId}\` for long bodies). Attach any handoff files with \`--artifact <path>\`.\n` +
   '</hive-system-reminder>'
 
 const ORCHESTRATOR_RULES = [
@@ -46,9 +46,22 @@ const WORKER_RULES = [
   '你是 Hive 右侧卡片里的真实 CLI worker，不是你所在 CLI 的内置 subagent。',
   '不要调用 team send，也不要再启动你所在 CLI 的内置 subagent / 子代理工具（如 Task / Explore 等）来替你完成派单。',
   '完成或阻塞已派发任务时必须用 `team report` 汇报给 Orchestrator。',
+  '如果产出了计划、实现报告、测试报告、经验记录或其他交接文件，用 `--artifact <path>` 把路径随 `team report` / `team status` 一起回传。',
   '如果当前没有明确派发任务，只是汇报待命、环境或状态，使用 `team status "<当前状态>"`。',
   '`team --help` 只用于查命令语法，**绝不是** 汇报手段；其输出不会进入 Orchestrator 视野，跑完后仍需正式调用 `team report` / `team status`。',
   '`team report` / `team status` 报错时会同时打印 USAGE，按 USAGE 修正参数后重试；不要把 `team --help` 当成"自我探查"的替身。',
+]
+
+const WORKFLOW_RECIPE_LINES = [
+  'Use this recipe when the user asks for a multi-agent build loop or when a feature needs separate planning, implementation, and verification.',
+  'The Orchestrator stays lean: pass file paths and short summaries between agents; do not paste large plan/report bodies back into the Orchestrator unless a decision needs the content.',
+  'Use `.hive/runs/<task-id>/` as the default handoff directory for durable artifacts.',
+  'Planner writes `.hive/runs/<task-id>/plan.md` and reports the path with `--artifact`.',
+  'Developer implements one scoped task, writes `.hive/runs/<task-id>/dev-report.md`, and may append lessons to `.hive/runs/<task-id>/lessons.md`.',
+  'Tester verifies the same task, writes `.hive/runs/<task-id>/test-report.md`, and reports pass/fail with `--artifact`.',
+  'If Tester fails the task, send the failure artifact path back to the same Developer when possible; then ask the same Tester to re-check.',
+  'Stop after 3 fix loops for one task and mark it for human review instead of continuing indefinitely.',
+  'After a task passes, update `.hive/tasks.md` and move to the next task.',
 ]
 
 export const getHiveTeamRules = (agent: Pick<AgentSummary, 'role'>) =>
@@ -93,7 +106,13 @@ export const buildProtocolDoc = (): string =>
     '',
     '- `team report "<result>" --dispatch <id>` — report task outcome',
     "- `team report --stdin --dispatch <id>` — same, body from stdin (use `<<'EOF'` heredoc for long bodies)",
+    '- `team report --stdin --dispatch <id> --artifact <path>` — report with a durable handoff file',
     '- `team status "<state>"` — update orchestrator when no dispatch is active',
+    '- `team status --stdin --artifact <path>` — progress update with a handoff file',
+    '',
+    '## Workflow recipe: plan-dev-test loop',
+    '',
+    renderRules(WORKFLOW_RECIPE_LINES),
     '',
     '## Orchestrator rules',
     '',

@@ -77,6 +77,7 @@ describe('team prompt contract', () => {
       expect(output).toContain('@Orchestrator')
       expect(output).toContain(`你的角色：${worker.description}`)
       expect(output).toContain(`执行 \`team report "<result>" --dispatch ${dispatch.id}\``)
+      expect(output).toContain(`team report --stdin --dispatch ${dispatch.id} --artifact <path>`)
       expect(output).toContain(`dispatch_id: ${dispatch.id}`)
       expect(output).not.toContain('--success')
       expect(output).not.toContain('--failed')

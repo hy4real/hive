@@ -88,6 +88,7 @@ describe('buildWorkerDispatchPayload', () => {
     expect(payload).toContain('[Hive 系统消息：来自 @orchestrator-1 的派单]')
     expect(payload).toContain('你的角色：Coder — implements features')
     expect(payload).toContain('dispatch_id: disp-42')
+    expect(payload).toContain('team report --stdin --dispatch disp-42 --artifact <path>')
     expect(payload).toContain('add error handling to login.ts')
   })
 

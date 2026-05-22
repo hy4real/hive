@@ -36,6 +36,7 @@ describe('buildWorkerReminderTail', () => {
     const tail = buildWorkerReminderTail('disp-abc')
     expect(tail).toContain('team report "<result>" --dispatch disp-abc')
     expect(tail).toContain('team report --stdin --dispatch disp-abc')
+    expect(tail).toContain('--artifact <path>')
   })
 
   test('different dispatch_ids produce different reminder bodies', () => {
@@ -62,7 +63,20 @@ describe('buildProtocolDoc', () => {
     expect(doc).toContain('## Worker rules')
     expect(doc).toContain('## `team` CLI — orchestrator')
     expect(doc).toContain('## `team` CLI — worker')
+    expect(doc).toContain('## Workflow recipe: plan-dev-test loop')
     expect(doc).toContain('team cancel --dispatch <id> "<reason>"')
+  })
+
+  test('documents the file-handoff workflow recipe and retry cap', () => {
+    const doc = buildProtocolDoc()
+    expect(doc).toContain('.hive/runs/<task-id>/')
+    expect(doc).toContain('.hive/runs/<task-id>/plan.md')
+    expect(doc).toContain('.hive/runs/<task-id>/dev-report.md')
+    expect(doc).toContain('.hive/runs/<task-id>/test-report.md')
+    expect(doc).toContain('same Developer')
+    expect(doc).toContain('same Tester')
+    expect(doc).toContain('Stop after 3 fix loops')
+    expect(doc).toContain('--artifact <path>')
   })
 
   test('mentions the .hive/PROTOCOL.md cat-recover path explicitly', () => {
