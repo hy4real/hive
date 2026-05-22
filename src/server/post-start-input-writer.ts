@@ -11,7 +11,7 @@ const PASTE_CHARS_PER_DELAY_MS = 4
 const PASTE_ACK_CHECK_INTERVAL_MS = 50
 const PASTE_ACK_SETTLE_DELAY_MS = 100
 const PASTE_ACK_TIMEOUT_MS = 3000
-const COMMANDS_WITH_BRACKETED_PASTE = new Set(['claude', 'codex', 'opencode'])
+const COMMANDS_WITH_BRACKETED_PASTE = new Set(['claude', 'codex', 'opencode', 'pi'])
 
 export const toBracketedPasteSubmission = (text: string) => `\u001b[200~${text}\u001b[201~`
 

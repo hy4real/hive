@@ -2,7 +2,7 @@ import { basename } from 'node:path'
 
 import type { AgentLaunchConfigInput } from './agent-run-store.js'
 
-export type TerminalInputProfile = 'default' | 'opencode'
+export type TerminalInputProfile = 'default' | 'opencode' | 'reasonix'
 
 export interface TerminalRunSummary {
   agent_id: string
@@ -23,8 +23,11 @@ export const resolveTerminalInputProfile = (
 ): TerminalInputProfile => {
   if (!config) return 'default'
   if (config.commandPresetId === 'opencode') return 'opencode'
+  if (config.commandPresetId === 'reasonix') return 'reasonix'
 
   const executable =
     normalizeExecutable(config.interactiveCommand) ?? normalizeExecutable(config.command)
-  return executable === 'opencode' ? 'opencode' : 'default'
+  if (executable === 'opencode') return 'opencode'
+  if (executable === 'reasonix' || executable === 'dsnix') return 'reasonix'
+  return 'default'
 }
