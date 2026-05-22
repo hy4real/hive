@@ -54,11 +54,6 @@ describe('settings api', () => {
         yolo_args_template: [],
       }),
       expect.objectContaining({
-        id: 'reasonix',
-        display_name: 'Reasonix',
-        yolo_args_template: [],
-      }),
-      expect.objectContaining({
         id: 'claude',
         display_name: 'Claude Code (CC)',
         yolo_args_template: [

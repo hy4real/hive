@@ -28,12 +28,6 @@ import {
   hasPiSession,
   snapshotPiSessionIds,
 } from './session-capture-pi.js'
-import {
-  captureReasonixSessionId,
-  getReasonixSessionsRoot,
-  hasReasonixSession,
-  snapshotReasonixSessionIds,
-} from './session-capture-reasonix.js'
 
 export type SessionIdCaptureConfig =
   | { source: 'claude_project_jsonl_dir'; pattern: string }
@@ -41,7 +35,6 @@ export type SessionIdCaptureConfig =
   | { source: 'gemini_session_json_dir'; pattern: string }
   | { source: 'opencode_session_db'; pattern: string }
   | { source: 'pi_session_jsonl_dir'; pattern: string }
-  | { source: 'reasonix_session_jsonl_dir'; pattern: string }
   | { source: 'stdout_regex'; pattern: string }
   | { source: 'banner_parse'; pattern?: string }
 
@@ -67,7 +60,6 @@ export const parseSessionIdCapture = (value: unknown): SessionIdCaptureConfig | 
     value.source === 'gemini_session_json_dir' ||
     value.source === 'opencode_session_db' ||
     value.source === 'pi_session_jsonl_dir' ||
-    value.source === 'reasonix_session_jsonl_dir' ||
     value.source === 'stdout_regex'
   ) {
     return typeof pattern === 'string' ? { pattern, source: value.source } : null
@@ -122,14 +114,6 @@ export const snapshotSessionIdsForCapture = (
     return {
       env: { HIVE_PI_SESSIONS_DIR: sessionsRoot },
       knownSessionIds: snapshotPiSessionIds(cwd, sessionsRoot),
-      root: sessionsRoot,
-    }
-  }
-  if (capture.source === 'reasonix_session_jsonl_dir') {
-    const sessionsRoot = getReasonixSessionsRoot(capture.pattern)
-    return {
-      env: { HIVE_REASONIX_SESSIONS_DIR: sessionsRoot },
-      knownSessionIds: snapshotReasonixSessionIds(cwd, sessionsRoot),
       root: sessionsRoot,
     }
   }
@@ -199,16 +183,6 @@ export const captureSessionIdForCapture = async (
       snapshot.root
     )
   }
-  if (capture.source === 'reasonix_session_jsonl_dir') {
-    await captureReasonixSessionId(
-      cwd,
-      snapshot.knownSessionIds,
-      onCapture,
-      timeoutMs,
-      intervalMs,
-      snapshot.root
-    )
-  }
 }
 
 export const doesCapturedSessionExist = (
@@ -231,9 +205,6 @@ export const doesCapturedSessionExist = (
   }
   if (capture.source === 'pi_session_jsonl_dir') {
     return hasPiSession(cwd, sessionId, capture.pattern)
-  }
-  if (capture.source === 'reasonix_session_jsonl_dir') {
-    return hasReasonixSession(cwd, sessionId, capture.pattern)
   }
   return false
 }

@@ -27,17 +27,6 @@ export const BUILTIN_COMMAND_PRESETS: BuiltinCommandPresetDefaults[] = [
     yoloArgsTemplate: null,
   },
   {
-    command: 'reasonix',
-    displayName: 'Reasonix',
-    id: 'reasonix',
-    resumeArgsTemplate: 'code --continue',
-    sessionIdCapture: {
-      pattern: '~/.reasonix/sessions/*.jsonl',
-      source: 'reasonix_session_jsonl_dir',
-    },
-    yoloArgsTemplate: [],
-  },
-  {
     command: 'claude',
     displayName: 'Claude Code (CC)',
     id: 'claude',

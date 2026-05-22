@@ -170,7 +170,7 @@ describe('schema version', () => {
       .prepare('SELECT key, value FROM app_state WHERE key = ?')
       .get('active_workspace_id') as { key: string; value: string | null } | undefined
 
-    expect(presetCount.count).toBe(6)
+    expect(presetCount.count).toBe(5)
     expect(roleTemplateCount.count).toBe(4)
     expect(appState).toEqual({ key: 'active_workspace_id', value: null })
 

@@ -14,7 +14,7 @@ type TerminalLike = {
 const PIXELS_PER_WHEEL_LINE = 16
 const TRACKPAD_DAMPING = 0.3
 
-export type TerminalWheelInputProfile = 'default' | 'opencode' | 'reasonix'
+export type TerminalWheelInputProfile = 'default' | 'opencode'
 
 type WheelFallbackResult = {
   input: string | null
@@ -34,7 +34,7 @@ const profileSequence = (
   profile: TerminalWheelInputProfile,
   direction: 'down' | 'up'
 ) => {
-  if (profile === 'opencode' || profile === 'reasonix') {
+  if (profile === 'opencode') {
     return direction === 'up' ? '\u001b[5~' : '\u001b[6~'
   }
   return arrowSequence(terminal.modes?.applicationCursorKeysMode, direction)
@@ -53,7 +53,6 @@ export const createAlternateScreenWheelInputResolver = (
     }
     if (
       profile !== 'opencode' &&
-      profile !== 'reasonix' &&
       terminal.modes?.mouseTrackingMode &&
       terminal.modes.mouseTrackingMode !== 'none'
     ) {

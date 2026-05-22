@@ -2,7 +2,7 @@ import { basename } from 'node:path'
 
 import type { AgentManager } from './agent-manager.js'
 
-const INTERACTIVE_COMMANDS = new Set(['claude', 'codex', 'gemini', 'opencode', 'pi', 'reasonix'])
+const INTERACTIVE_COMMANDS = new Set(['claude', 'codex', 'gemini', 'opencode', 'pi'])
 const READY_CHECK_INTERVAL_MS = 50
 const READY_TIMEOUT_MS = 3000
 const MIN_SUBMIT_AFTER_PASTE_DELAY_MS = 600
@@ -11,7 +11,7 @@ const PASTE_CHARS_PER_DELAY_MS = 4
 const PASTE_ACK_CHECK_INTERVAL_MS = 50
 const PASTE_ACK_SETTLE_DELAY_MS = 100
 const PASTE_ACK_TIMEOUT_MS = 3000
-const COMMANDS_WITH_BRACKETED_PASTE = new Set(['claude', 'codex', 'opencode', 'pi'])
+const COMMANDS_WITH_BRACKETED_PASTE = new Set(['claude', 'codex', 'opencode'])
 
 export const toBracketedPasteSubmission = (text: string) => `\u001b[200~${text}\u001b[201~`
 
@@ -45,6 +45,13 @@ const isClaudeCommand = (command: string) => getCommandName(command) === 'claude
 const usesBracketedPaste = (command: string) =>
   COMMANDS_WITH_BRACKETED_PASTE.has(getCommandName(command))
 const canTimeoutBeforePromptReady = (command: string) => getCommandName(command) !== 'gemini'
+
+/**
+ * Commands that inject startup instructions via CLI args (e.g. --append-system-prompt)
+ * rather than post-start stdin. These skip the post-start startup instructions path.
+ */
+export const injectsStartupInstructionsViaCliArgs = (command: string) =>
+  getCommandName(command) === 'pi'
 const isWritableRunStatus = (status: string | undefined) =>
   status === undefined || status === 'starting' || status === 'running'
 

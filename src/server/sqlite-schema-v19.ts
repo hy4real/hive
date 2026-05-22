@@ -2,7 +2,7 @@ import type { Database } from 'better-sqlite3'
 
 import { BUILTIN_COMMAND_PRESETS } from './command-preset-defaults.js'
 
-const NEW_PRESET_IDS = ['pi', 'reasonix']
+const NEW_PRESET_IDS = ['pi']
 
 export const applySchemaVersion19 = (db: Database) => {
   const now = Date.now()

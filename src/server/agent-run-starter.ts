@@ -10,7 +10,11 @@ import { buildAgentStartupInstructions } from './agent-startup-instructions.js'
 import type { AgentTokenRegistry } from './agent-tokens.js'
 import type { CommandPresetRecord } from './command-preset-store.js'
 import type { LiveRunRegistry } from './live-run-registry.js'
-import { createPostStartInputWriter, isInteractiveAgentCommand } from './post-start-input-writer.js'
+import {
+  createPostStartInputWriter,
+  injectsStartupInstructionsViaCliArgs,
+  isInteractiveAgentCommand,
+} from './post-start-input-writer.js'
 import type { RestartPolicy } from './restart-policy.js'
 
 interface AgentRunStarterInput {
@@ -96,10 +100,24 @@ export const createAgentRunStarter =
       },
     }
 
+    const interactiveCommand = startConfig.interactiveCommand ?? startConfig.command
+    const shouldInjectViaCliArgs =
+      !startConfig.resumedSessionId &&
+      agent !== undefined &&
+      injectsStartupInstructionsViaCliArgs(interactiveCommand)
+
+    const cliArgsInjection = shouldInjectViaCliArgs
+      ? ['--append-system-prompt', buildAgentStartupInstructions({ agent, workspace })]
+      : []
+    const resolvedArgs = [
+      ...(startConfig.args ?? []),
+      ...cliArgsInjection,
+    ]
+
     let run: Awaited<ReturnType<AgentManager['startAgent']>>
     try {
       run = await agentManager.startAgent(
-        startConfig.args ? { ...startInput, args: startConfig.args } : startInput
+        resolvedArgs.length > 0 ? { ...startInput, args: resolvedArgs } : startInput
       )
     } catch (error) {
       tokenRegistry.revokeIfMatches(agentId, token)
@@ -137,10 +155,7 @@ export const createAgentRunStarter =
     }
 
     startAgentRunCapture({ agentId, sessionCaptureSnapshot, sessionStore, startConfig, workspace })
-    const postStartWriter = createPostStartInputWriter(
-      agentManager,
-      startConfig.interactiveCommand ?? startConfig.command
-    )
+    const postStartWriter = createPostStartInputWriter(agentManager, interactiveCommand)
     queueMicrotask(() => {
       try {
         const injectedRestartMessage = restartPolicy.injectPostStartMessage({
@@ -150,17 +165,12 @@ export const createAgentRunStarter =
           workspace,
           writeToRun: postStartWriter,
         })
-        if (config.commandPresetId) {
-          const preset = getCommandPreset(config.commandPresetId)
-          if (preset?.yoloArgsTemplate && preset.yoloArgsTemplate.length === 0) {
-            postStartWriter(run.runId, '/mode yolo\r')
-          }
-        }
         if (
+          !shouldInjectViaCliArgs &&
           !startConfig.resumedSessionId &&
           !injectedRestartMessage &&
           agent &&
-          isInteractiveAgentCommand(startConfig.interactiveCommand ?? startConfig.command)
+          isInteractiveAgentCommand(interactiveCommand)
         ) {
           postStartWriter(run.runId, buildAgentStartupInstructions({ agent, workspace }))
         }
