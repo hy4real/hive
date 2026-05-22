@@ -236,11 +236,14 @@ describe('Layer A native resume integration', () => {
         const state = await getRunViaHttp(server.baseUrl, cookie, secondRun.runId)
         expect(state.status).toBe('running')
         expect(state.output).toContain(`--resume ${sessionId}`)
-        expect(state.output).not.toContain('STDIN:')
-        expect(state.output).not.toContain('[Hive 系统消息')
       })
 
-      expect(listSystemMessages(server.dataDir, 'system_env_sync')).toHaveLength(0)
+      const envSyncMessages = listSystemMessages(server.dataDir, 'system_env_sync')
+      expect(envSyncMessages).toHaveLength(1)
+      expect(envSyncMessages[0].worker_id).toBe(alice.id)
+      expect(envSyncMessages[0].text).toContain('Alpha')
+      expect(envSyncMessages[0].text).toContain('Bob')
+      expect(envSyncMessages[0].text).toContain('env sync task')
       expect(listSystemMessages(server.dataDir, 'system_recovery_summary')).toHaveLength(0)
     } finally {
       await server.close()

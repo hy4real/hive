@@ -163,7 +163,29 @@ describe('workspace shell terminal', () => {
 
   test('starts one workspace shell and wires it through the terminal websocket', async () => {
     const workspacePath = mkdtempSync(join(tmpdir(), 'hive-shell-terminal-'))
+    const binDir = mkdtempSync(join(tmpdir(), 'hive-shell-terminal-bin-'))
     tempDirs.push(workspacePath)
+    tempDirs.push(binDir)
+    const fakeShell = join(binDir, 'fake-shell')
+    writeFileSync(
+      fakeShell,
+      [
+        '#!/usr/bin/env node',
+        "process.stdin.setEncoding('utf8')",
+        'let input = ""',
+        "process.stdout.write('shell ready\\n')",
+        "process.stdin.on('data', (chunk) => {",
+        '  input += chunk',
+        "  if (!input.includes('\\r') && !input.includes('\\n')) return",
+        '  const command = input.trim()',
+        '  input = ""',
+        "  if (command === 'pwd') process.stdout.write(process.cwd() + '\\n')",
+        '})',
+        'process.stdin.resume()',
+      ].join('\n')
+    )
+    chmodSync(fakeShell, 0o755)
+    setEnv('SHELL', fakeShell)
     const server = await startTestServer()
 
     try {

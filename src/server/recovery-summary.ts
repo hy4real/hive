@@ -89,6 +89,35 @@ const formatWorkers = (workers: AgentSummary[]) => {
 const getTaskSectionTitle = (agent: AgentSummary) =>
   agent.role === 'orchestrator' ? '## 你已派出的任务' : '## 最近派给你的任务'
 
+export const buildEnvSyncSummary = ({
+  agent,
+  tasksContent,
+  workers,
+  workspace,
+}: {
+  agent: AgentSummary
+  tasksContent: string
+  workers: AgentSummary[]
+  workspace: WorkspaceSummary
+}) =>
+  wrapSystemMessage(
+    [
+      '你刚被 Hive 重启了。你的对话历史已通过原生 session resume 恢复，但 Hive 侧环境可能已变化。',
+      '',
+      '## 当前环境',
+      `- workspace: ${workspace.name}（${workspace.path}）`,
+      `- 你的角色：${agent.description}`,
+      '',
+      '## 当前 worker',
+      ...formatWorkers(workers),
+      '',
+      `## 当前 ${TASKS_RELATIVE_PATH}`,
+      tasksContent.slice(0, TASKS_HEAD_LIMIT) || '(空)',
+      '',
+      '如果不确定当前状态，用 team list / Read .hive/tasks.md 自查或问 user。',
+    ].join('\n')
+  )
+
 export const buildRecoverySummary = ({
   agent,
   allTaskMessages,
