@@ -13,7 +13,11 @@ const pillToneByStatus: Record<WorkerStatusKind, string> = {
   stopped: 'pill--red',
 }
 const roleKey = (role: TeamListItem['role']) =>
-  `role.${role}` as 'role.coder' | 'role.custom' | 'role.reviewer' | 'role.tester'
+  `template.${role}` as
+    | 'template.coder'
+    | 'template.custom'
+    | 'template.reviewer'
+    | 'template.tester'
 const statusKey = (status: WorkerStatusKind) => {
   if (status === 'working') return 'common.running'
   if (status === 'idle') return 'common.idle'

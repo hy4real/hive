@@ -2,6 +2,8 @@ export const agentStatuses = ['idle', 'working', 'stopped'] as const
 
 export type AgentStatus = (typeof agentStatuses)[number]
 
+export type AgentKind = 'orchestrator' | 'member'
+
 export type WorkerRole = 'coder' | 'reviewer' | 'tester' | 'custom'
 
 export interface WorkspaceSummary {
@@ -16,6 +18,7 @@ export interface AgentSummary {
   name: string
   description: string
   role: WorkerRole | 'orchestrator'
+  kind: AgentKind
   status: AgentStatus
   pendingTaskCount: number
 }
@@ -24,6 +27,7 @@ export interface TeamListItem {
   id: string
   name: string
   role: WorkerRole
+  kind: 'member'
   status: AgentStatus
   pendingTaskCount: number
   /**
@@ -50,6 +54,7 @@ export interface TeamListItemPayload {
   id: string
   name: string
   role: WorkerRole
+  kind: 'member'
   status: AgentStatus
   pending_task_count: number
   last_pty_line: string | null

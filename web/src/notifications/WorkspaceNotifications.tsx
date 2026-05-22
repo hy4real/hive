@@ -7,10 +7,10 @@ import { useI18n } from '../i18n.js'
 import { useNotifications } from './NotificationProvider.js'
 
 const ROLE_LABEL_KEYS: Record<WorkerRole, TranslationKey> = {
-  coder: 'role.coder',
-  custom: 'role.custom',
-  reviewer: 'role.reviewer',
-  tester: 'role.tester',
+  coder: 'template.coder',
+  custom: 'template.custom',
+  reviewer: 'template.reviewer',
+  tester: 'template.tester',
 }
 
 type WorkerSnapshot = Pick<TeamListItem, 'id' | 'name' | 'pendingTaskCount' | 'role' | 'status'>

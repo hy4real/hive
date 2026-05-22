@@ -8,32 +8,36 @@ import { useI18n } from '../i18n.js'
 import { Confirm } from '../ui/Confirm.js'
 import { RoleAvatar } from './RoleAvatar.js'
 
-interface RoleCardSpec {
+interface TemplateCardSpec {
   value: WorkerRole
   dashed?: boolean
 }
 
-const ROLE_CARDS: RoleCardSpec[] = [
+const TEMPLATE_CARDS: TemplateCardSpec[] = [
   { value: 'coder' },
   { value: 'reviewer' },
   { value: 'tester' },
   { value: 'custom', dashed: true },
 ]
 
-const roleLabelKey = (role: WorkerRole) =>
-  `role.${role}` as 'role.coder' | 'role.custom' | 'role.reviewer' | 'role.tester'
+const templateLabelKey = (role: WorkerRole) =>
+  `template.${role}` as
+    | 'template.coder'
+    | 'template.custom'
+    | 'template.reviewer'
+    | 'template.tester'
 
 export const SectionLabel = ({ children }: { children: ReactNode }) => (
   <span className="text-sm font-medium text-sec">{children}</span>
 )
 
-const RoleCard = ({
+const TemplateCard = ({
   active,
   spec,
   onSelect,
 }: {
   active: boolean
-  spec: RoleCardSpec
+  spec: TemplateCardSpec
   onSelect: () => void
 }) => {
   const { t } = useI18n()
@@ -42,12 +46,12 @@ const RoleCard = ({
       type="button"
       onClick={onSelect}
       aria-pressed={active}
-      data-testid={`role-card-${spec.value}`}
+      data-testid={`template-card-${spec.value}`}
       className={`selectable-card${spec.dashed ? ' selectable-card--dashed' : ''} flex items-center gap-3 px-3 py-2`}
     >
       <RoleAvatar role={spec.value} size={20} />
       <span className="flex-1 text-left text-base font-medium text-pri">
-        {t(roleLabelKey(spec.value))}
+        {t(templateLabelKey(spec.value))}
       </span>
       {active ? <Check size={14} className="shrink-0 text-accent" aria-hidden /> : null}
     </button>
@@ -64,10 +68,10 @@ export const RolePicker = ({
   const { t } = useI18n()
   return (
     <div className="flex flex-col gap-2">
-      <SectionLabel>{t('addWorker.role')}</SectionLabel>
+      <SectionLabel>{t('addWorker.workerTemplate')}</SectionLabel>
       <div className="grid grid-cols-2 gap-2">
-        {ROLE_CARDS.map((spec) => (
-          <RoleCard
+        {TEMPLATE_CARDS.map((spec) => (
+          <TemplateCard
             key={spec.value}
             active={workerRole === spec.value}
             spec={spec}
@@ -132,7 +136,7 @@ export const RoleTemplatePicker = ({
 
   return (
     <div className="flex flex-col gap-2">
-      <SectionLabel>{t('addWorker.template')}</SectionLabel>
+      <SectionLabel>{t('addWorker.savedTemplates')}</SectionLabel>
       <div ref={containerRef} className="relative">
         <button
           type="button"
@@ -151,7 +155,7 @@ export const RoleTemplatePicker = ({
         {open ? (
           <div
             role="listbox"
-            aria-label={t('addWorker.template')}
+            aria-label={t('addWorker.savedTemplates')}
             data-testid="role-template-picker-menu"
             className="elev-2 absolute left-0 right-0 top-full z-30 mt-1 flex max-h-72 flex-col overflow-hidden rounded border"
             style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-bright)' }}
@@ -319,7 +323,7 @@ export const RoleInstructionsField = ({
           <SectionLabel>{t('addWorker.roleInstructions')}</SectionLabel>
           {modified ? (
             <span className="text-sm text-ter">
-              · {t('addWorker.modifiedFrom', { role: t(roleLabelKey(workerRole)) })}
+              · {t('addWorker.modifiedFrom', { role: t(templateLabelKey(workerRole)) })}
             </span>
           ) : null}
         </span>
@@ -362,7 +366,7 @@ export const RoleInstructionsField = ({
         </div>
       </summary>
       <textarea
-        aria-label="Role instructions"
+        aria-label={t('addWorker.roleInstructions')}
         id="add-worker-role-instructions"
         value={roleDescription}
         rows={5}

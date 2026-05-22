@@ -349,6 +349,7 @@ describe('team protocol end to end', () => {
         expect(teamResponse.status).toBe(200)
         const team = (await teamResponse.json()) as Array<{
           id: string
+          kind: string
           pending_task_count: number
           status: string
         }>

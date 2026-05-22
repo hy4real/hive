@@ -207,6 +207,7 @@ describe('runtime http app', () => {
     await expect(response.json()).resolves.toEqual([
       {
         id: worker.id,
+        kind: 'member',
         name: 'Alice',
         role: 'coder',
         status: 'working',
@@ -295,6 +296,7 @@ describe('runtime http app', () => {
     await expect(response.json()).resolves.toEqual({
       agent_start: { ok: false, error: null, run_id: null },
       id: expect.any(String),
+      kind: 'member',
       name: 'Alice',
       role: 'coder',
       status: 'stopped',
@@ -305,6 +307,7 @@ describe('runtime http app', () => {
     expect(store.listWorkers(workspace.id)).toEqual([
       {
         id: expect.any(String),
+        kind: 'member',
         name: 'Alice',
         role: 'coder',
         status: 'stopped',

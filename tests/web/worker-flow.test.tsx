@@ -170,7 +170,7 @@ describe('worker flow with real server', () => {
     })
     // M6-A: role is selected via card buttons (no native select). Coder card is
     // the default-active card; click is idempotent and asserts wiring.
-    fireEvent.click(within(dialog).getByTestId('role-card-coder'))
+    fireEvent.click(within(dialog).getByTestId('template-card-coder'))
     // Agent CLI is selected via radio-style buttons keyed by preset id.
     await waitFor(() => {
       expect(within(dialog).queryByTestId(`agent-radio-${sleeperPresetId}`)).toBeInTheDocument()
@@ -234,7 +234,7 @@ describe('worker flow with real server', () => {
     ).toHaveLength(0)
   })
 
-  test('Add Worker dialog shows role instructions and saves an edited prompt', async () => {
+  test('Add Worker dialog uses template terminology', async () => {
     render(<App />)
 
     await waitFor(() => {
@@ -243,11 +243,26 @@ describe('worker flow with real server', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /Add Member/ })[0] as HTMLElement)
 
     const dialog = await screen.findByRole('form', { name: 'Add team member' })
-    const instructions = await within(dialog).findByLabelText('Role instructions')
+    expect(within(dialog).getByText('Template')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Template instructions')).toBeInTheDocument()
+    expect(within(dialog).queryByText(/^Role$/)).toBeNull()
+    expect(within(dialog).queryByLabelText('Role instructions')).toBeNull()
+  })
+
+  test('Add Worker dialog shows template instructions and saves an edited prompt', async () => {
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: /Add Member/ }).length).toBeGreaterThan(0)
+    })
+    fireEvent.click(screen.getAllByRole('button', { name: /Add Member/ })[0] as HTMLElement)
+
+    const dialog = await screen.findByRole('form', { name: 'Add team member' })
+    const instructions = await within(dialog).findByLabelText('Template instructions')
     expect((instructions as HTMLTextAreaElement).value).toContain('You are a Coder')
     expect((instructions as HTMLTextAreaElement).value).toContain('Report changed files')
 
-    fireEvent.click(within(dialog).getByTestId('role-card-reviewer'))
+    fireEvent.click(within(dialog).getByTestId('template-card-reviewer'))
     expect((instructions as HTMLTextAreaElement).value).toContain('You are a Reviewer')
     expect((instructions as HTMLTextAreaElement).value).toContain('blocking issues')
 

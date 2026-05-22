@@ -11,7 +11,7 @@ const enMessages = {
   'addWorker.customPlaceholder':
     'You are a security reviewer focused on auth and input validation. Use team report to hand findings back to the orchestrator.',
   'addWorker.description':
-    'Pick a role and a CLI agent. The orchestrator dispatches work via {command}.',
+    'Pick a template and a CLI agent. The orchestrator dispatches work via {command}.',
   'addWorker.enterName': 'Enter a name',
   'addWorker.genericAgent': 'Generic command',
   'addWorker.genericCommand': 'startup command only',
@@ -23,23 +23,24 @@ const enMessages = {
   'addWorker.random': 'Random',
   'addWorker.randomAria': 'Generate random member name',
   'addWorker.randomTooltip': 'Suggest a random name',
-  'addWorker.role': 'Role',
-  'addWorker.roleInstructions': 'Role instructions',
+  'addWorker.template': 'Template',
+  'addWorker.workerTemplate': 'Template',
+  'addWorker.roleInstructions': 'Template instructions',
   'addWorker.roleInstructionsTitle':
-    "Injected into the agent's startup prompt and every dispatch. Hive's team protocol stays fixed; this only steers role behavior.",
+    "Injected into the agent's startup prompt and every dispatch. Hive's team protocol stays fixed; this only steers member behavior.",
   'addWorker.reset': 'Reset',
   'addWorker.saveAsTemplate': 'Save as template',
   'addWorker.startupCommand': 'Startup command',
   'addWorker.startupHelp':
     'Optional. Runs through your login shell in this Workspace. Use it for custom agents or native resume commands such as {example}.',
   'addWorker.startupOverrides': 'overrides CLI launch',
-  'addWorker.template': 'Saved templates',
+  'addWorker.savedTemplates': 'Saved templates',
   'addWorker.templateClear': 'Use blank Custom (no template)',
   'addWorker.templateDeleteAria': 'Delete template {name}',
   'addWorker.templateDeleteConfirm': 'Delete the saved template "{name}"? This cannot be undone.',
   'addWorker.templateDeleteConfirmLabel': 'Delete',
-  'addWorker.templateDeleteTitle': 'Delete role template',
-  'addWorker.templateEmpty': 'No saved templates yet. Fill in role instructions and save one.',
+  'addWorker.templateDeleteTitle': 'Delete member template',
+  'addWorker.templateEmpty': 'No saved templates yet. Fill in template instructions and save one.',
   'addWorker.templateNamePlaceholder': 'Template name',
   'addWorker.templateNoMatch': 'No templates match this search.',
   'addWorker.templatePickPlaceholder': 'Choose a saved template…',
@@ -47,7 +48,7 @@ const enMessages = {
   'addWorker.templateSearchPlaceholder': 'Search templates',
   'addWorker.title': 'Add team member',
   'addWorker.unavailable': '{name} is not installed',
-  'addWorker.emptyInstructions': 'Add role instructions',
+  'addWorker.emptyInstructions': 'Add template instructions',
   'common.cancel': 'Cancel',
   'common.close': 'Close',
   'common.copied': 'Copied',
@@ -124,10 +125,10 @@ const enMessages = {
   'orchestrator.stoppedDesc':
     'Start the Orchestrator to plan tasks and dispatch them to team members.',
   'orchestrator.stoppedTitle': 'Orchestrator is stopped',
-  'role.coder': 'Coder',
-  'role.custom': 'Custom',
-  'role.reviewer': 'Reviewer',
-  'role.tester': 'Tester',
+  'template.coder': 'Coder',
+  'template.custom': 'Custom',
+  'template.reviewer': 'Reviewer',
+  'template.tester': 'Tester',
   'runtime.retryNow': 'Retry now',
   'runtime.staleBody': 'Writes are paused until Hive reconnects to the local runtime.',
   'runtime.staleTitle': 'Hive runtime connection lost',
@@ -375,8 +376,8 @@ const zhMessages: Record<TranslationKey, string> = {
   'addWorker.creating': '创建中…',
   'addWorker.customPlaceholder':
     '你是安全审查成员，重点关注鉴权和输入校验。用 team report 把发现交还给 Orchestrator。',
-  'addWorker.description': '选择角色和 CLI Agent。Orchestrator 会通过 {command} 分派任务。',
-  'addWorker.emptyInstructions': '补充角色说明',
+  'addWorker.description': '选择模板和 CLI Agent。Orchestrator 会通过 {command} 分派任务。',
+  'addWorker.emptyInstructions': '补充模板说明',
   'addWorker.enterName': '请输入名称',
   'addWorker.genericAgent': '通用命令',
   'addWorker.genericCommand': '仅使用启动命令',
@@ -388,23 +389,24 @@ const zhMessages: Record<TranslationKey, string> = {
   'addWorker.random': '随机',
   'addWorker.randomAria': '生成随机成员名',
   'addWorker.randomTooltip': '随机来一个',
-  'addWorker.role': '角色',
-  'addWorker.roleInstructions': '角色说明',
+  'addWorker.template': '模板',
+  'addWorker.workerTemplate': '模板',
+  'addWorker.roleInstructions': '模板说明',
   'addWorker.roleInstructionsTitle':
-    '会注入到 Agent 启动提示和每次派单中。Hive 的 team 协议保持不变，这里只影响角色行为。',
+    '会注入到 Agent 启动提示和每次派单中。Hive 的 team 协议保持不变，这里只影响成员行为。',
   'addWorker.reset': '重置',
   'addWorker.saveAsTemplate': '保存为模板',
   'addWorker.startupCommand': '启动命令',
   'addWorker.startupHelp':
     '可选。会在当前 Workspace 里通过登录 shell 运行。适合自定义 Agent 或原生命令恢复会话，例如 {example}。',
   'addWorker.startupOverrides': '覆盖 CLI 启动',
-  'addWorker.template': '已保存的模板',
+  'addWorker.savedTemplates': '已保存的模板',
   'addWorker.templateClear': '不使用模板（空白 Custom）',
   'addWorker.templateDeleteAria': '删除模板 {name}',
   'addWorker.templateDeleteConfirm': '删除已保存的模板"{name}"？该操作无法撤销。',
   'addWorker.templateDeleteConfirmLabel': '删除',
-  'addWorker.templateDeleteTitle': '删除角色模板',
-  'addWorker.templateEmpty': '还没有已保存的模板。在下方填写角色说明并保存。',
+  'addWorker.templateDeleteTitle': '删除成员模板',
+  'addWorker.templateEmpty': '还没有已保存的模板。在下方填写模板说明并保存。',
   'addWorker.templateNamePlaceholder': '模板名称',
   'addWorker.templateNoMatch': '没有匹配的模板。',
   'addWorker.templatePickPlaceholder': '选择已保存的模板…',
@@ -484,10 +486,10 @@ const zhMessages: Record<TranslationKey, string> = {
   'orchestrator.startingTitle': 'Orchestrator 启动中',
   'orchestrator.stoppedDesc': '启动 Orchestrator 后才能规划任务并分派给团队成员。',
   'orchestrator.stoppedTitle': 'Orchestrator 已停止',
-  'role.coder': '开发',
-  'role.custom': '自定义',
-  'role.reviewer': '审查',
-  'role.tester': '测试',
+  'template.coder': '开发',
+  'template.custom': '自定义',
+  'template.reviewer': '审查',
+  'template.tester': '测试',
   'runtime.retryNow': '立即重试',
   'runtime.staleBody': '重新连接本地后端前，写操作已暂停。',
   'runtime.staleTitle': 'Hive 后端连接已断开',
@@ -755,11 +757,16 @@ const writeStoredLanguage = (language: UiLanguage) => {
 
 const createTranslator =
   (language: UiLanguage): Translate =>
-  (key, values = {}) =>
-    messages[language][key].replace(/\{(\w+)\}/g, (match, name: string) => {
+  (key, values = {}) => {
+    const template = messages[language][key]
+    if (template === undefined) {
+      throw new Error(`Missing translation key: ${String(key)}`)
+    }
+    return template.replace(/\{(\w+)\}/g, (match, name: string) => {
       const value = values[name]
       return value === undefined ? match : String(value)
     })
+  }
 
 const fallbackValue: I18nValue = {
   language: 'en',

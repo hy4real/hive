@@ -41,6 +41,7 @@ describe('useTerminalPanelTabs', () => {
     const workers = [
       {
         id: 'worker-a',
+        kind: 'member' as const,
         name: 'Alice',
         role: 'coder' as const,
         status: 'idle' as const,
@@ -75,6 +76,7 @@ describe('useTerminalPanelTabs', () => {
     const workers = [
       {
         id: 'worker-a',
+        kind: 'member' as const,
         name: 'Alice',
         role: 'coder' as const,
         status: 'idle' as const,
@@ -82,6 +84,7 @@ describe('useTerminalPanelTabs', () => {
       },
       {
         id: 'worker-b',
+        kind: 'member' as const,
         name: 'Bob',
         role: 'coder' as const,
         status: 'idle' as const,
@@ -103,6 +106,7 @@ describe('useTerminalPanelTabs', () => {
     const workers = [
       {
         id: 'worker-a',
+        kind: 'member' as const,
         name: 'Alice',
         role: 'coder' as const,
         status: 'idle' as const,
@@ -110,6 +114,7 @@ describe('useTerminalPanelTabs', () => {
       },
       {
         id: 'worker-b',
+        kind: 'member' as const,
         name: 'Bob',
         role: 'coder' as const,
         status: 'idle' as const,
@@ -130,6 +135,7 @@ describe('useTerminalPanelTabs', () => {
     const workers = [
       {
         id: 'worker-a',
+        kind: 'member' as const,
         name: 'Alice',
         role: 'coder' as const,
         status: 'idle' as const,
@@ -154,6 +160,7 @@ describe('useTerminalPanelTabs', () => {
     const workers = [
       {
         id: 'zzz',
+        kind: 'member' as const,
         name: 'Zed',
         role: 'coder' as const,
         status: 'idle' as const,

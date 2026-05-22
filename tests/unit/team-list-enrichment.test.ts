@@ -41,6 +41,7 @@ const makeStore = ({
 
 const worker = (overrides: Partial<TeamListItem> = {}): TeamListItem => ({
   id: 'worker-1',
+  kind: 'member',
   name: 'alice',
   role: 'coder',
   status: 'idle',

@@ -60,6 +60,7 @@ describe('runtime rehydration', () => {
     expect(secondStore.listWorkers(workspace.id)).toEqual([
       {
         id: alice.id,
+        kind: 'member',
         name: 'Alice',
         role: 'coder',
         status: 'stopped',
@@ -67,6 +68,7 @@ describe('runtime rehydration', () => {
       },
       {
         id: bob.id,
+        kind: 'member',
         name: 'Bob',
         role: 'tester',
         status: 'stopped',

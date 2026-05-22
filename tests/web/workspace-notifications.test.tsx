@@ -45,6 +45,7 @@ const installLocalStorage = () => {
 
 const member = (overrides: Partial<TeamListItem>): TeamListItem => ({
   id: 'member-1',
+  kind: 'member',
   name: 'ember-check-23',
   pendingTaskCount: 0,
   role: 'coder',

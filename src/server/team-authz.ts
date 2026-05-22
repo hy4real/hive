@@ -4,12 +4,11 @@ import { ForbiddenError, UnauthorizedError } from './http-errors.js'
 export type TeamCommand = 'send' | 'list' | 'report' | 'status' | 'cancel' | 'help'
 
 const ORCHESTRATOR_COMMANDS = new Set<TeamCommand>(['send', 'list', 'cancel', 'help'])
-const WORKER_COMMANDS = new Set<TeamCommand>(['report', 'status', 'help'])
-const WORKER_ROLES = new Set<AgentSummary['role']>(['coder', 'reviewer', 'tester', 'custom'])
+const MEMBER_COMMANDS = new Set<TeamCommand>(['report', 'status', 'help'])
 
-export const commandAllowedForRole = (role: AgentSummary['role'], command: TeamCommand) => {
-  if (role === 'orchestrator') return ORCHESTRATOR_COMMANDS.has(command)
-  if (WORKER_ROLES.has(role)) return WORKER_COMMANDS.has(command)
+export const commandAllowedForKind = (kind: AgentSummary['kind'], command: TeamCommand) => {
+  if (kind === 'orchestrator') return ORCHESTRATOR_COMMANDS.has(command)
+  if (kind === 'member') return MEMBER_COMMANDS.has(command)
   return false
 }
 
@@ -43,8 +42,8 @@ export const authenticateCliAgent = ({
   return agent
 }
 
-export const requireCommandForRole = (agent: AgentSummary, command: TeamCommand) => {
-  if (!commandAllowedForRole(agent.role, command)) {
-    throw new ForbiddenError(`Role '${agent.role}' is not allowed to run team ${command}`)
+export const requireCommandForKind = (agent: AgentSummary, command: TeamCommand) => {
+  if (!commandAllowedForKind(agent.kind, command)) {
+    throw new ForbiddenError(`Agent kind '${agent.kind}' is not allowed to run team ${command}`)
   }
 }

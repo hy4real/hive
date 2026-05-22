@@ -278,6 +278,7 @@ describe('runtime store', () => {
     expect(store.listWorkers(workspace.id)).toEqual([
       {
         id: expect.any(String),
+        kind: 'member',
         name: 'Alice',
         role: 'coder',
         status: 'stopped',
@@ -285,6 +286,7 @@ describe('runtime store', () => {
       },
       {
         id: expect.any(String),
+        kind: 'member',
         name: 'Bob',
         role: 'tester',
         status: 'stopped',

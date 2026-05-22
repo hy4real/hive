@@ -6,7 +6,7 @@ import type {
   RouteDefinition,
   SendTaskBody,
 } from './route-types.js'
-import { authenticateCliAgent, requireCommandForRole } from './team-authz.js'
+import { authenticateCliAgent, requireCommandForKind } from './team-authz.js'
 
 const requireNonEmptyString = (value: unknown, field: string) => {
   if (typeof value !== 'string' || value.trim().length === 0) {
@@ -32,7 +32,7 @@ export const teamRoutes: RouteDefinition[] = [
       validateToken: store.validateAgentToken,
       workspaceId: projectId,
     })
-    requireCommandForRole(agent, 'send')
+    requireCommandForKind(agent, 'send')
     const dispatch = await store.dispatchTaskByWorkerName(projectId, to, text, {
       fromAgentId,
       hivePort: String(request.socket.localPort ?? ''),
@@ -53,7 +53,7 @@ export const teamRoutes: RouteDefinition[] = [
       validateToken: store.validateAgentToken,
       workspaceId: projectId,
     })
-    requireCommandForRole(agent, 'cancel')
+    requireCommandForKind(agent, 'cancel')
     const result = store.cancelTask(projectId, dispatchId, { fromAgentId, reason })
     sendJson(response, 202, {
       dispatch_id: result.dispatch?.id ?? null,
@@ -74,7 +74,7 @@ export const teamRoutes: RouteDefinition[] = [
       validateToken: store.validateAgentToken,
       workspaceId: projectId,
     })
-    requireCommandForRole(agent, 'report')
+    requireCommandForKind(agent, 'report')
     const reportInput = {
       artifacts: getArtifacts(body.artifacts),
       ...(typeof body.dispatch_id === 'string' ? { dispatchId: body.dispatch_id } : {}),
@@ -116,7 +116,7 @@ export const teamRoutes: RouteDefinition[] = [
       validateToken: store.validateAgentToken,
       workspaceId: projectId,
     })
-    requireCommandForRole(agent, 'status')
+    requireCommandForKind(agent, 'status')
     const result = store.statusTask(projectId, fromAgentId, {
       artifacts: getArtifacts(body.artifacts),
       requireActiveRun: true,

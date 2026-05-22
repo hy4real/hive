@@ -28,12 +28,26 @@ describe('useWorkspaceWorkers', () => {
       const url = typeof input === 'string' ? input : input.toString()
       if (url === '/api/ui/workspaces/a/team') {
         return json([
-          { id: 'wa', name: 'Alice', role: 'coder', status: 'working', pending_task_count: 1 },
+          {
+            id: 'wa',
+            kind: 'member',
+            name: 'Alice',
+            role: 'coder',
+            status: 'working',
+            pending_task_count: 1,
+          },
         ])
       }
       if (url === '/api/ui/workspaces/b/team') {
         return json([
-          { id: 'wb', name: 'Bob', role: 'tester', status: 'idle', pending_task_count: 0 },
+          {
+            id: 'wb',
+            kind: 'member',
+            name: 'Bob',
+            role: 'tester',
+            status: 'idle',
+            pending_task_count: 0,
+          },
         ])
       }
       throw new Error(`Unexpected fetch ${url}`)
@@ -46,6 +60,7 @@ describe('useWorkspaceWorkers', () => {
         a: [
           {
             id: 'wa',
+            kind: 'member',
             lastPtyLine: undefined,
             name: 'Alice',
             pendingTaskCount: 1,
@@ -56,6 +71,7 @@ describe('useWorkspaceWorkers', () => {
         b: [
           {
             id: 'wb',
+            kind: 'member',
             lastPtyLine: undefined,
             name: 'Bob',
             pendingTaskCount: 0,
@@ -72,12 +88,26 @@ describe('useWorkspaceWorkers', () => {
       const url = typeof input === 'string' ? input : input.toString()
       if (url === '/api/ui/workspaces/a/team') {
         return json([
-          { id: 'wa', name: 'Alice', role: 'coder', status: 'working', pending_task_count: 1 },
+          {
+            id: 'wa',
+            kind: 'member',
+            name: 'Alice',
+            role: 'coder',
+            status: 'working',
+            pending_task_count: 1,
+          },
         ])
       }
       if (url === '/api/ui/workspaces/b/team') {
         return json([
-          { id: 'wb', name: 'Bob', role: 'tester', status: 'idle', pending_task_count: 0 },
+          {
+            id: 'wb',
+            kind: 'member',
+            name: 'Bob',
+            role: 'tester',
+            status: 'idle',
+            pending_task_count: 0,
+          },
         ])
       }
       throw new Error(`Unexpected fetch ${url}`)
@@ -102,6 +132,7 @@ describe('useWorkspaceWorkers', () => {
         b: [
           {
             id: 'wb',
+            kind: 'member',
             lastPtyLine: undefined,
             name: 'Bob',
             pendingTaskCount: 0,
@@ -115,11 +146,18 @@ describe('useWorkspaceWorkers', () => {
 
   test('keeps the same workspace map reference when refreshed worker payloads are unchanged', async () => {
     vi.useFakeTimers()
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(
-        json([{ id: 'wa', name: 'Alice', role: 'coder', status: 'idle', pending_task_count: 0 }])
-      )
+    const fetchMock = vi.fn().mockResolvedValue(
+      json([
+        {
+          id: 'wa',
+          kind: 'member',
+          name: 'Alice',
+          role: 'coder',
+          status: 'idle',
+          pending_task_count: 0,
+        },
+      ])
+    )
     vi.stubGlobal('fetch', fetchMock)
 
     const { result } = renderHook(() => useWorkspaceWorkers(['a']))
@@ -152,7 +190,16 @@ describe('useWorkspaceWorkers', () => {
       )
       .mockRejectedValueOnce(new Error('temporary failure'))
       .mockResolvedValue(
-        json([{ id: 'wa', name: 'Alice', role: 'coder', status: 'idle', pending_task_count: 0 }])
+        json([
+          {
+            id: 'wa',
+            kind: 'member',
+            name: 'Alice',
+            role: 'coder',
+            status: 'idle',
+            pending_task_count: 0,
+          },
+        ])
       )
     vi.stubGlobal('fetch', fetchMock)
 

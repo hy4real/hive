@@ -3,6 +3,7 @@ import type { TeamListItem, TeamListItemPayload } from '../shared/types.js'
 export const serializeTeamListItem = ({
   commandPresetId,
   id,
+  kind,
   lastPtyLine,
   name,
   pendingTaskCount,
@@ -12,6 +13,7 @@ export const serializeTeamListItem = ({
   id,
   name,
   role,
+  kind,
   status,
   pending_task_count: pendingTaskCount,
   last_pty_line: lastPtyLine ?? null,

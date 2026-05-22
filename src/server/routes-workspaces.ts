@@ -14,7 +14,7 @@ import type {
   UserInputBody,
 } from './route-types.js'
 import type { RuntimeStore } from './runtime-store.js'
-import { authenticateCliAgent, requireCommandForRole } from './team-authz.js'
+import { authenticateCliAgent, requireCommandForKind } from './team-authz.js'
 import { enrichTeamList } from './team-list-enrichment.js'
 import { serializeTeamListItem } from './team-list-serializer.js'
 import { requireUiTokenFromRequest } from './ui-auth-helpers.js'
@@ -127,7 +127,7 @@ export const workspaceRoutes: RouteDefinition[] = [
       validateToken: store.validateAgentToken,
       workspaceId,
     })
-    requireCommandForRole(agent, 'list')
+    requireCommandForKind(agent, 'list')
 
     sendJson(
       response,

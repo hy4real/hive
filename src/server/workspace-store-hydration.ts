@@ -21,6 +21,7 @@ const createWorkerSummary = (
   name: row.name,
   description: row.description ?? getDefaultRoleDescription(row.role),
   role: row.role,
+  kind: 'member',
   status: 'stopped',
   pendingTaskCount: 0,
 })

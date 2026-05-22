@@ -107,7 +107,7 @@ describe('Add Worker dialog: custom role templates', () => {
 
     // Default workerRole is 'coder', so the template picker should not render.
     await waitFor(() => {
-      expect(screen.getByTestId('role-card-coder')).toBeInTheDocument()
+      expect(screen.getByTestId('template-card-coder')).toBeInTheDocument()
     })
     expect(screen.queryByTestId('role-template-picker-trigger')).toBeNull()
   })
@@ -126,9 +126,9 @@ describe('Add Worker dialog: custom role templates', () => {
     render(<Harness />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('role-card-custom')).toBeInTheDocument()
+      expect(screen.getByTestId('template-card-custom')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByTestId('role-card-custom'))
+    fireEvent.click(screen.getByTestId('template-card-custom'))
 
     expect(screen.getByTestId('role-template-picker-trigger')).toBeInTheDocument()
   })
@@ -150,9 +150,9 @@ describe('Add Worker dialog: custom role templates', () => {
       expect(listRoleTemplates).toHaveBeenCalledTimes(1)
     })
 
-    fireEvent.click(screen.getByTestId('role-card-custom'))
-    fireEvent.click(screen.getByTestId('role-card-reviewer'))
-    fireEvent.click(screen.getByTestId('role-card-custom'))
+    fireEvent.click(screen.getByTestId('template-card-custom'))
+    fireEvent.click(screen.getByTestId('template-card-reviewer'))
+    fireEvent.click(screen.getByTestId('template-card-custom'))
 
     expect(listRoleTemplates).toHaveBeenCalledTimes(1)
   })
@@ -178,9 +178,9 @@ describe('Add Worker dialog: custom role templates', () => {
     render(<Harness />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('role-card-custom')).toBeInTheDocument()
+      expect(screen.getByTestId('template-card-custom')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByTestId('role-card-custom'))
+    fireEvent.click(screen.getByTestId('template-card-custom'))
 
     // Picker starts closed; opening reveals the search input and options.
     expect(screen.queryByTestId('role-template-picker-menu')).toBeNull()
@@ -215,9 +215,9 @@ describe('Add Worker dialog: custom role templates', () => {
     render(<Harness />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('role-card-custom')).toBeInTheDocument()
+      expect(screen.getByTestId('template-card-custom')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByTestId('role-card-custom'))
+    fireEvent.click(screen.getByTestId('template-card-custom'))
     fireEvent.click(screen.getByTestId('role-template-picker-trigger'))
 
     fireEvent.change(screen.getByTestId('role-template-search-input'), {
@@ -242,9 +242,9 @@ describe('Add Worker dialog: custom role templates', () => {
     render(<Harness />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('role-card-custom')).toBeInTheDocument()
+      expect(screen.getByTestId('template-card-custom')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByTestId('role-card-custom'))
+    fireEvent.click(screen.getByTestId('template-card-custom'))
     fireEvent.click(screen.getByTestId('role-template-picker-trigger'))
     fireEvent.click(screen.getByTestId('role-template-option-tpl-doc'))
 
@@ -269,9 +269,9 @@ describe('Add Worker dialog: custom role templates', () => {
     render(<Harness />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('role-card-custom')).toBeInTheDocument()
+      expect(screen.getByTestId('template-card-custom')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByTestId('role-card-custom'))
+    fireEvent.click(screen.getByTestId('template-card-custom'))
     fireEvent.click(screen.getByTestId('role-template-picker-trigger'))
     fireEvent.click(screen.getByTestId('role-template-option-tpl-doc'))
     // re-open and clear
@@ -279,7 +279,7 @@ describe('Add Worker dialog: custom role templates', () => {
     fireEvent.click(screen.getByTestId('role-template-clear'))
 
     // Still on Custom role; trigger label resets to the placeholder.
-    expect(screen.getByTestId('role-card-custom').getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByTestId('template-card-custom').getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByTestId('role-template-picker-trigger').textContent).not.toContain(
       'Doc Writer'
     )
@@ -300,9 +300,9 @@ describe('Add Worker dialog: custom role templates', () => {
     render(<Harness />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('role-card-custom')).toBeInTheDocument()
+      expect(screen.getByTestId('template-card-custom')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByTestId('role-card-custom'))
+    fireEvent.click(screen.getByTestId('template-card-custom'))
     fireEvent.click(screen.getByTestId('role-template-picker-trigger'))
     fireEvent.click(screen.getByTestId('role-template-delete-tpl-doc'))
 
@@ -324,9 +324,9 @@ describe('Add Worker dialog: custom role templates', () => {
     render(<Harness />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('role-card-custom')).toBeInTheDocument()
+      expect(screen.getByTestId('template-card-custom')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByTestId('role-card-custom'))
+    fireEvent.click(screen.getByTestId('template-card-custom'))
     fireEvent.click(screen.getByTestId('role-template-picker-trigger'))
 
     expect(screen.getByTestId('role-template-empty-state')).toBeInTheDocument()
@@ -338,12 +338,12 @@ describe('Add Worker dialog: custom role templates', () => {
     render(<Harness />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('role-card-custom')).toBeInTheDocument()
+      expect(screen.getByTestId('template-card-custom')).toBeInTheDocument()
     })
     // initially coder selected; save button hidden
     expect(screen.queryByTestId('role-template-save')).toBeNull()
 
-    fireEvent.click(screen.getByTestId('role-card-custom'))
+    fireEvent.click(screen.getByTestId('template-card-custom'))
     const textarea = screen.getByTestId('role-instructions-textarea') as HTMLTextAreaElement
     fireEvent.change(textarea, { target: { value: 'My custom role.' } })
 
@@ -363,9 +363,9 @@ describe('Add Worker dialog: custom role templates', () => {
     render(<Harness />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('role-card-custom')).toBeInTheDocument()
+      expect(screen.getByTestId('template-card-custom')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByTestId('role-card-custom'))
+    fireEvent.click(screen.getByTestId('template-card-custom'))
     const textarea = screen.getByTestId('role-instructions-textarea') as HTMLTextAreaElement
     fireEvent.change(textarea, { target: { value: 'My custom role.' } })
 
@@ -394,9 +394,9 @@ describe('Add Worker dialog: custom role templates', () => {
     render(<Harness />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('role-card-custom')).toBeInTheDocument()
+      expect(screen.getByTestId('template-card-custom')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByTestId('role-card-custom'))
+    fireEvent.click(screen.getByTestId('template-card-custom'))
     const textarea = screen.getByTestId('role-instructions-textarea') as HTMLTextAreaElement
     fireEvent.change(textarea, { target: { value: 'My custom role.' } })
 

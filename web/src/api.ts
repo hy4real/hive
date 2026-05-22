@@ -11,6 +11,7 @@ export type { OpenTargetId, OpenWorkspaceErrorCode }
 
 const fromPayload = (payload: TeamListItemPayload): TeamListItem => ({
   id: payload.id,
+  kind: payload.kind,
   name: payload.name,
   role: payload.role,
   status: payload.status,

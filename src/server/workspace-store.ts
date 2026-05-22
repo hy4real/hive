@@ -58,6 +58,7 @@ export const createWorkspaceStore = (
         name,
         description: input.description ?? getDefaultRoleDescription(input.role),
         role: input.role,
+        kind: 'member',
         status: 'stopped',
         pendingTaskCount: 0,
       }
@@ -150,6 +151,7 @@ export const createWorkspaceStore = (
         .agents.filter(isWorkerAgent)
         .map(({ id, name, role, status, pendingTaskCount }) => ({
           id,
+          kind: 'member',
           name,
           role,
           status,

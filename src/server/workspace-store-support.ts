@@ -31,6 +31,7 @@ export const createOrchestrator = (workspaceId: string): AgentSummary => ({
   name: 'Orchestrator',
   description: getDefaultRoleDescription('orchestrator'),
   role: 'orchestrator',
+  kind: 'orchestrator',
   status: 'stopped',
   pendingTaskCount: 0,
 })
@@ -38,7 +39,7 @@ export const createOrchestrator = (workspaceId: string): AgentSummary => ({
 export const isWorkerAgent = (
   agent: AgentSummary
 ): agent is AgentSummary & { role: WorkerRole } => {
-  return agent.role !== 'orchestrator'
+  return agent.kind === 'member'
 }
 
 export const getStatusFromPendingCount = (pendingTaskCount: number): AgentStatus => {

@@ -22,6 +22,7 @@ export const DEMO_ORCHESTRATOR = {
 export const DEMO_WORKERS: TeamListItem[] = [
   {
     id: 'demo-coder',
+    kind: 'member',
     name: 'alice',
     role: 'coder',
     status: 'working',
@@ -31,6 +32,7 @@ export const DEMO_WORKERS: TeamListItem[] = [
   },
   {
     id: 'demo-reviewer',
+    kind: 'member',
     name: 'bob',
     role: 'reviewer',
     status: 'idle',

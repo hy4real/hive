@@ -14,6 +14,7 @@ afterEach(() => {
 
 const worker = (overrides: Partial<TeamListItem> = {}): TeamListItem => ({
   id: 'worker-1',
+  kind: 'member',
   name: 'ember-check-23',
   pendingTaskCount: 0,
   role: 'coder',
