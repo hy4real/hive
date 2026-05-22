@@ -107,6 +107,25 @@ export const workspaceRoutes: RouteDefinition[] = [
       enrichTeamList(workspaceId, store, store.listWorkers(workspaceId)).map(serializeTeamListItem)
     )
   }),
+  route('GET', '/api/ui/workspaces/:workspaceId/artifacts', ({ params, request, response, store }) => {
+    const workspaceId = getRequiredParam(
+      response,
+      params,
+      'workspaceId',
+      'Workspace id is required'
+    )
+    if (!workspaceId) {
+      return
+    }
+
+    requireUiTokenFromRequest(request, store.validateUiToken)
+
+    const url = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`)
+    const limitParam = url.searchParams.get('limit')
+    const limit = limitParam ? Math.min(Math.max(Number(limitParam), 1), 200) : 50
+
+    sendJson(response, 200, store.listRecentArtifacts(workspaceId, limit))
+  }),
   route('GET', '/api/workspaces/:workspaceId/team', ({ params, request, response, store }) => {
     const workspaceId = getRequiredParam(
       response,

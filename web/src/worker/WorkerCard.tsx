@@ -3,6 +3,7 @@ import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 
 import type { TeamListItem } from '../../../src/shared/types.js'
 import { useI18n } from '../i18n.js'
+import { ArtifactList } from '../ui/ArtifactList.js'
 import { Tooltip } from '../ui/Tooltip.js'
 import { CliAgentAvatar } from './CliAgentAvatar.js'
 import { presentWorkerStatus, type WorkerStatusKind } from './worker-status.js'
@@ -27,6 +28,7 @@ const statusKey = (status: WorkerStatusKind) => {
 export type WorkerCardActionKind = 'start' | 'rename' | 'delete'
 
 type WorkerCardProps = {
+  artifacts?: string[]
   hasRun: boolean
   isPending?: boolean
   onAction?: (kind: WorkerCardActionKind, worker: TeamListItem) => void
@@ -41,6 +43,7 @@ type WorkerCardProps = {
  * sits top-right; hover action cluster floats over the same corner.
  */
 export const WorkerCard = ({
+  artifacts = [],
   hasRun,
   isPending = false,
   onAction,
@@ -96,6 +99,9 @@ export const WorkerCard = ({
           <span className={status.dotClass} aria-hidden />
           {t(statusKey(status.kind))}
         </span>
+        {artifacts.length > 0 ? (
+          <ArtifactList artifacts={artifacts} className="mt-1 flex flex-col gap-0.5" />
+        ) : null}
       </button>
 
       {onAction ? (

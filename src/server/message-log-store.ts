@@ -177,10 +177,34 @@ export const createMessageLogStore = (db: Database) => {
       .filter((message): message is RecoveryMessage => message !== null)
   }
 
+  const listRecentArtifacts = (workspaceId: string, limit = 50) => {
+    return db
+      .prepare(
+        `SELECT worker_id, type, from_agent_id, text, artifacts, created_at
+         FROM messages
+         WHERE workspace_id = ? AND artifacts IS NOT NULL AND artifacts != '[]'
+         ORDER BY sequence DESC
+         LIMIT ?`
+      )
+      .all(workspaceId, limit)
+      .map((row: unknown) => {
+        const typedRow = row as MessageRow
+        return {
+          artifacts: parseArtifacts(typedRow.artifacts),
+          createdAt: typedRow.created_at,
+          fromAgentId: typedRow.from_agent_id ?? null,
+          text: typedRow.text ?? '',
+          type: typedRow.type,
+          workerId: typedRow.worker_id,
+        }
+      })
+  }
+
   return {
     deleteMessage,
     insertMessage,
     listMessageKinds,
     listMessagesForRecovery,
+    listRecentArtifacts,
   }
 }
