@@ -1,7 +1,7 @@
 import { Terminal, UserPlus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
-import type { TeamListItem, WorkspaceArtifact } from '../../../src/shared/types.js'
+import type { TeamListItem } from '../../../src/shared/types.js'
 import type { TerminalRunSummary } from '../api.js'
 import { useI18n } from '../i18n.js'
 import { Confirm } from '../ui/Confirm.js'
@@ -11,7 +11,6 @@ import { WorkerCard, type WorkerCardActionKind } from './WorkerCard.js'
 import { presentWorkerStatus, type WorkerStatusKind } from './worker-status.js'
 
 type WorkersPaneProps = {
-  artifacts?: WorkspaceArtifact[]
   onAddWorkerClick: () => void
   onDeleteWorker: (worker: TeamListItem) => void
   onOpenShellTerminal: () => void
@@ -52,7 +51,6 @@ const summarizeWorkers = (workers: TeamListItem[]) => {
 }
 
 export const WorkersPane = ({
-  artifacts = [],
   onAddWorkerClick,
   onDeleteWorker,
   onOpenShellTerminal,
@@ -66,18 +64,6 @@ export const WorkersPane = ({
 }: WorkersPaneProps) => {
   const { t } = useI18n()
   const { sections, summary } = useMemo(() => summarizeWorkers(workers), [workers])
-  const artifactsByWorkerId = useMemo(() => {
-    const map = new Map<string, string[]>()
-    for (const artifact of artifacts) {
-      const existing = map.get(artifact.worker_id)
-      if (existing) {
-        existing.push(...artifact.artifacts)
-      } else {
-        map.set(artifact.worker_id, [...artifact.artifacts])
-      }
-    }
-    return map
-  }, [artifacts])
   const runIdsByAgentId = useMemo(
     () => new Map(terminalRuns.map((run) => [run.agent_id, run.run_id] as const)),
     [terminalRuns]
@@ -198,7 +184,6 @@ export const WorkersPane = ({
                   {section.workers.map((worker) => (
                     <li key={worker.id}>
                       <WorkerCard
-                        artifacts={artifactsByWorkerId.get(worker.id) ?? []}
                         hasRun={runIdsByAgentId.has(worker.id)}
                         isPending={startingWorkerId === worker.id}
                         onAction={handleAction}

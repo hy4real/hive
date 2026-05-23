@@ -4,7 +4,6 @@ import type {
   TeamListItem,
   TeamListItemPayload,
   WorkerRole,
-  WorkspaceArtifact,
   WorkspaceSummary,
 } from '../../src/shared/types.js'
 
@@ -295,22 +294,6 @@ export const listWorkers = async (workspaceId: string): Promise<TeamListItem[]> 
 
   const payload = (await response.json()) as TeamListItemPayload[]
   return payload.map(fromPayload)
-}
-
-export const listWorkspaceArtifacts = async (
-  workspaceId: string,
-  limit = 50
-): Promise<WorkspaceArtifact[]> => {
-  const response = await apiFetch(
-    `/api/ui/workspaces/${workspaceId}/artifacts?limit=${limit}`,
-    { mode: 'same-origin' }
-  )
-
-  if (!response.ok) {
-    throw new Error('Failed to load artifacts')
-  }
-
-  return (await response.json()) as WorkspaceArtifact[]
 }
 
 export const listCommandPresets = async (): Promise<CommandPreset[]> => {

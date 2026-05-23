@@ -60,12 +60,3 @@ export interface TeamListItemPayload {
   last_pty_line: string | null
   command_preset_id: string | null
 }
-
-export interface WorkspaceArtifact {
-  worker_id: string
-  type: string
-  artifacts: string[]
-  created_at: number
-  from_agent_id: string | null
-  text: string
-}

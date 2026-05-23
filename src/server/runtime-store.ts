@@ -80,14 +80,6 @@ interface RuntimeStore {
   registerTasksListener: (listener: (workspaceId: string, content: string) => void) => () => void
   listAgentRuns: (agentId: string) => PersistedAgentRun[]
   listMessagesForRecovery: (workspaceId: string, sinceMs: number) => RecoveryMessage[]
-  listRecentArtifacts: (workspaceId: string, limit?: number) => Array<{
-    artifacts: string[]
-    createdAt: number
-    fromAgentId: string | null
-    text: string
-    type: string
-    workerId: string
-  }>
   peekAgentToken: (agentId: string) => string | undefined
   pauseTerminalRun: (runId: string) => void
   resizeAgentRun: (runId: string, cols: number, rows: number) => void
@@ -190,8 +182,6 @@ export const createRuntimeStore = (options: RuntimeStoreOptions = {}): RuntimeSt
     listAgentRuns: (agentId) => services.agentRuntime.listAgentRuns(agentId),
     listMessagesForRecovery: (workspaceId, sinceMs) =>
       services.messageLogStore.listMessagesForRecovery(workspaceId, sinceMs),
-    listRecentArtifacts: (workspaceId, limit) =>
-      services.messageLogStore.listRecentArtifacts(workspaceId, limit),
     peekAgentToken: (agentId) => services.agentRuntime.peekAgentToken(agentId),
     pauseTerminalRun: lifecycle.pauseTerminalRun,
     resizeAgentRun: lifecycle.resizeTerminalRun,

@@ -15,7 +15,6 @@ import { findRunByAgentId } from './terminal/useTerminalRuns.js'
 import { useWorkspaceShellLauncher } from './terminal/useWorkspaceShellLauncher.js'
 import { useToast } from './ui/useToast.js'
 import { usePaneSplit } from './usePaneSplit.js'
-import { useWorkspaceArtifacts } from './useWorkspaceArtifacts.js'
 import { OrchestratorPane } from './worker/OrchestratorPane.js'
 import { useOrchestratorPaneState } from './worker/useOrchestratorPaneState.js'
 import type { WorkerActions } from './worker/useWorkerActions.js'
@@ -91,7 +90,6 @@ export const WorkspaceDetail = ({
     },
   })
   const split = usePaneSplit()
-  const artifacts = useWorkspaceArtifacts(workspace?.id ?? null)
   const activeWorker: TeamListItem | null =
     workers.find((worker) => worker.id === activeWorkerId) ?? null
   useEffect(() => {
@@ -252,7 +250,6 @@ export const WorkspaceDetail = ({
         />
         <div className="relative flex min-w-0 flex-1 flex-col">
           <WorkersPane
-            artifacts={artifacts}
             onAddWorkerClick={() => setComposerOpen(true)}
             onDeleteWorker={handleDeleteWorker}
             onOpenShellTerminal={openShellTerminal}
